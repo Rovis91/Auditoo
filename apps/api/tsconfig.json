@@ -11,5 +11,6 @@
     "skipLibCheck": true,
     "declaration": true
   },
+  "references": [{ "path": "../../tsconfig.types.json" }],
   "include": ["src"]
 }

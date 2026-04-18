@@ -5,6 +5,10 @@ node_modules/
 dist/
 apps/web/dist/
 
+# TypeScript build artifacts
+*.tsbuildinfo
+/.types/
+
 # Environment variables
 .env
 .env.local

@@ -8,7 +8,9 @@
       "Bash(npx eslint *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(npx tsc *)"
     ]
   }
 }
