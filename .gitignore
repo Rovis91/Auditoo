@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+apps/web/dist/
+
+# Environment variables
+.env
+.env.local
+apps/api/.env
+apps/web/.env
+
+# Supabase local Docker volumes
+supabase/.branches/
+supabase/.temp/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+*.local

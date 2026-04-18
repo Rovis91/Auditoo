@@ -1,0 +1,22 @@
+{
+  "name": "auditoo",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/web", "apps/api"],
+  "scripts": {
+    "dev": "concurrently \"npx supabase start\" \"npm run dev --workspace=apps/api\" \"npm run dev --workspace=apps/web\"",
+    "db:reset": "npx supabase db reset",
+    "db:seed": "node supabase/seed.js",
+    "db:types": "npx supabase gen types typescript --local > database.types.ts",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "concurrently": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^16.0.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}
