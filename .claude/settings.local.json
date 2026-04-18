@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -v \"^d.*\\\\.$\")",
+      "Bash(npm create *)",
+      "Bash(npx supabase *)",
+      "Bash(npm install *)",
+      "Bash(npx eslint *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(npm run *)"
+    ]
+  }
+}
