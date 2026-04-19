@@ -32,8 +32,13 @@ export function OfflineBar() {
         : 'Synchronisé'
 
   return (
-    <div className="h-7 flex items-center justify-center bg-muted/50 border-b border-border">
-      <span className="text-xs text-muted-foreground">{label}</span>
+    <div
+      role="status"
+      aria-live="polite"
+      data-testid="offline-bar"
+      className="h-8 flex items-center justify-center bg-muted border-b border-border"
+    >
+      <span className="text-xs font-medium text-foreground">{label}</span>
     </div>
   )
 }

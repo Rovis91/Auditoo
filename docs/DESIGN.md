@@ -80,7 +80,7 @@ The `fractional-indexing` library runs on the client to compute new index values
 
 ```
 User taps mic → browser MediaRecorder → audio blob
-→ POST /api/voice { audio, inspectionId, spaceId? }
+→ POST /voice (multipart: audio, inspectionId, spaceId?)
 → Hono: Whisper API (transcription, French)
 → Hono: GPT with inspection context + transcript
 → GPT returns structured JSON diff (fields to update)
@@ -122,6 +122,16 @@ Serwist (a maintained fork of Workbox) provides the service worker layer. The se
 - Caches the app shell for offline loading
 - Does not cache API responses (data freshness is handled by the mutation queue, not the SW)
 - Enables the "Add to Home Screen" prompt on mobile
+
+**Web app manifest and iOS:** `apps/web/public/manifest.webmanifest` lists `name`, `short_name`, `description`, `lang`, `icons` (SVG + PNG 192/512), and `theme_color` / `background_color`. `index.html` links `apple-touch-icon.png` (180×180) and Apple web app meta tags so “Add to Home Screen” on iOS shows a proper icon and title.
+
+### 11. End-to-end test (Cypress)
+
+A single critical-path spec (`cypress/e2e/critical-path.cy.ts`) covers: login with seeded credentials → create inspection → add level → add space → rename space → delete level. Stable selectors use `data-testid` on auth, list, form, and levels/spaces screens. Run `npm test` with the dev stack up (see `docs/SETUP.md`). Voice and OpenAI are out of scope for this test.
+
+### 12. Mobile polish (Phase 7)
+
+Levels/spaces and space detail use shadcn `Button` sizes (including a larger icon touch size) for ~44×44 px tap targets where practical. The offline/sync strip is `role="status"` with clear foreground/muted styling. Space detail uses a scrollable main column and `scrollIntoView` on focus to reduce fields hidden behind the mobile keyboard.
 
 ---
 

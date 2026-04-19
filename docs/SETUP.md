@@ -47,6 +47,17 @@ VITE_API_URL=http://localhost:3001
 
 > **Note:** Never put the Supabase service-role key or OpenAI key in the frontend env. They must stay server-side only.
 
+### `.env.local` at the repo root (for `npm run db:seed` only)
+
+The root script `npm run db:seed` runs `node --env-file .env.local supabase/seed.js`. Create **`.env.local`** in the project root (same directory as `package.json`) with:
+
+```env
+SUPABASE_URL=http://localhost:54321
+SUPABASE_SERVICE_ROLE_KEY=<same service_role key as in apps/api/.env>
+```
+
+Use the **service_role** value printed by `npx supabase start` (it matches what you put in `apps/api/.env`). This file is only for the seed script; it is not used by the Vite app.
+
 ---
 
 ## 3. Start Supabase locally
@@ -100,12 +111,12 @@ This runs `supabase/seed.js`, which:
 
 Together these create:
 - One company: `Diagnostics Dupont`
-- One auth user: `inspector@auditoo.eco` / `password123`
+- One auth user: `agent@exemple.com` / `motdepasse`
 - One `agents` row linked to that auth user
 
 > **Credentials for login:**
-> - Email: `inspector@auditoo.eco`
-> - Password: `password123`
+> - Email: `agent@exemple.com`
+> - Password: `motdepasse`
 
 ---
 
@@ -134,7 +145,42 @@ Open `http://localhost:5173` in a browser and log in with the seeded credentials
 
 ---
 
-## 8. Supabase Studio (optional)
+## 8. Cypress E2E tests
+
+**Prerequisites:** Steps 1–7 above are done: Supabase is running, migrations applied, seed ran, `apps/api/.env` and `apps/web/.env` exist, and the stack is up so the SPA can call the API.
+
+Start the app (Supabase + API + Vite):
+
+```bash
+npm run dev
+```
+
+In a **second** terminal, from the repo root:
+
+```bash
+npm test
+```
+
+This runs Cypress in headless mode against `http://localhost:5173` and executes the critical-path spec (`cypress/e2e/critical-path.cy.ts`: login with seeded credentials → create inspection → add level → add space → rename space → delete level).
+
+- **Ports:** `5173` (Vite), `3001` (Hono; must match `VITE_API_URL`), `54321` (Supabase Auth/API used when logging in).
+- **OpenAI** is **not** required for E2E (the voice flow is not covered).
+
+To open the Cypress interactive runner:
+
+```bash
+npm run test:e2e
+```
+
+Run a single spec:
+
+```bash
+npx cypress run --spec "cypress/e2e/critical-path.cy.ts"
+```
+
+---
+
+## 9. Supabase Studio (optional)
 
 Browse the database visually:
 
@@ -156,3 +202,5 @@ No login required in local mode.
 | Types out of sync | Run `npm run db:types` after any migration change |
 | API 401 errors | Check `SUPABASE_JWT_SECRET` in `apps/api/.env` matches CLI output |
 | Voice not working | Check `OPENAI_API_KEY` in `apps/api/.env` is valid |
+| Cypress `ECONNREFUSED` / blank tests | Ensure `npm run dev` is running (Vite + API) and `VITE_API_URL` points at the API |
+| `npm run db:seed` fails with missing env | Create root `.env.local` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (see §2) |

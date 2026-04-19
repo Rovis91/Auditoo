@@ -19,6 +19,11 @@ apps/web/.env
 supabase/.branches/
 supabase/.temp/
 
+# Cypress
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+
 # OS / editor
 .DS_Store
 Thumbs.db

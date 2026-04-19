@@ -36,13 +36,18 @@ function InspectionsListPage() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold">Inspections</h1>
-        <Button size="sm" onClick={() => navigate({ to: '/inspections/new' })}>
+        <Button
+          size="sm"
+          className="min-h-11"
+          onClick={() => navigate({ to: '/inspections/new' })}
+          data-testid="inspections-new"
+        >
           <Plus className="w-4 h-4 mr-1" />
           Nouvelle
         </Button>
       </header>
 
-      <main className="p-4 space-y-3 max-w-2xl mx-auto">
+      <main className="p-4 space-y-3 max-w-2xl mx-auto" data-testid="inspections-list">
         {loading && (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
@@ -65,6 +70,9 @@ function InspectionsListPage() {
         {inspections.map((insp) => (
           <button
             key={insp.id}
+            type="button"
+            data-testid="inspection-card"
+            data-inspection-id={insp.id}
             className="w-full text-left rounded-lg border border-border bg-card p-4 space-y-1 hover:bg-accent transition-colors active:scale-[0.99]"
             onClick={() => navigate({ to: '/inspections/$id', params: { id: insp.id } })}
           >

@@ -20,7 +20,8 @@ import { CSS } from '@dnd-kit/utilities'
 import { useDrag } from '@use-gesture/react'
 import { generateKeyBetween } from 'fractional-indexing'
 import { ChevronLeft, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { OfflineBar } from '@/components/offline-bar'
 import { VoiceBar } from '@/components/voice-bar'
@@ -63,15 +64,19 @@ function SwipeRow({ onDelete, children }: SwipeRowProps) {
   )
 
   return (
-    <div className="relative overflow-hidden rounded-lg">
-      <div className="absolute inset-y-0 right-0 flex items-center px-3 bg-destructive rounded-lg">
-        <button
+    <div className="relative overflow-hidden rounded-lg" data-testid="swipe-row">
+      <div className="absolute inset-y-0 right-0 flex items-stretch bg-destructive rounded-lg">
+        <Button
+          type="button"
+          variant="destructive"
+          size="iconTouch"
+          className="h-auto min-h-11 shrink-0 rounded-lg rounded-l-none px-4"
           onClick={onDelete}
-          className="text-destructive-foreground"
           aria-label="Supprimer"
+          data-testid="space-swipe-delete"
         >
-          <Trash2 className="w-4 h-4" />
-        </button>
+          <Trash2 className="w-5 h-5" />
+        </Button>
       </div>
       <div
         {...bind()}
@@ -120,15 +125,32 @@ function SpaceRow({ space, inspectionId, onDelete, onRename }: SpaceRowProps) {
 
   return (
     <SwipeRow onDelete={onDelete}>
-      <div ref={setNodeRef} style={style} className="flex items-center gap-2 px-3 py-2.5 border border-border rounded-lg bg-card">
-        <button {...attributes} {...listeners} className="text-muted-foreground/50 cursor-grab active:cursor-grabbing touch-none">
-          <GripVertical className="w-4 h-4" />
+      <div
+        ref={setNodeRef}
+        style={style}
+        data-testid="space-row"
+        data-space-id={space.id}
+        className="flex items-center gap-2 px-3 py-2 min-h-11 border border-border rounded-lg bg-card"
+      >
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className={cn(
+            buttonVariants({ variant: 'ghost', size: 'iconTouch' }),
+            'text-muted-foreground cursor-grab active:cursor-grabbing touch-none shrink-0 p-0',
+          )}
+          aria-label="Réordonner l'espace"
+          data-testid="space-drag-handle"
+        >
+          <GripVertical className="w-5 h-5" />
         </button>
 
         {editing ? (
           <input
             ref={inputRef}
-            className="flex-1 text-sm bg-transparent outline-none border-b border-primary"
+            data-testid="space-name-input"
+            className="flex-1 text-sm bg-transparent outline-none border-b border-primary min-h-10"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={commitRename}
@@ -136,16 +158,26 @@ function SpaceRow({ space, inspectionId, onDelete, onRename }: SpaceRowProps) {
           />
         ) : (
           <button
-            className="flex-1 text-sm text-left text-card-foreground"
+            type="button"
+            className="flex-1 text-sm text-left text-card-foreground min-h-10"
+            data-testid="space-name"
             onClick={() => navigate({ to: '/inspections/$id/spaces/$spaceId', params: { id: inspectionId, spaceId: space.id } })}
           >
             {space.name}
           </button>
         )}
 
-        <button onClick={startEdit} className="text-muted-foreground hover:text-foreground transition-colors">
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="iconTouch"
+          onClick={startEdit}
+          className="shrink-0 text-muted-foreground"
+          aria-label="Renommer l'espace"
+          data-testid="space-rename"
+        >
+          <Pencil className="w-5 h-5" />
+        </Button>
       </div>
     </SwipeRow>
   )
@@ -209,35 +241,72 @@ function LevelSection({
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
   return (
-    <div ref={setNodeRef} style={style} className="space-y-1.5">
+    <div ref={setNodeRef} style={style} className="space-y-1.5" data-testid="level-section" data-level-id={level.id}>
       {/* Level header */}
-      <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/60">
-        <button {...attributes} {...listeners} className="text-muted-foreground/50 cursor-grab active:cursor-grabbing touch-none">
-          <GripVertical className="w-4 h-4" />
+      <div className="flex items-center gap-1 sm:gap-2 px-1 py-1 rounded-md bg-muted/60 min-h-11">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className={cn(
+            buttonVariants({ variant: 'ghost', size: 'iconTouch' }),
+            'text-muted-foreground cursor-grab active:cursor-grabbing touch-none shrink-0 p-0',
+          )}
+          aria-label="Réordonner le niveau"
+          data-testid="level-drag-handle"
+        >
+          <GripVertical className="w-5 h-5" />
         </button>
 
         {editingLabel ? (
           <input
             ref={labelRef}
-            className="flex-1 text-sm font-semibold bg-transparent outline-none border-b border-primary"
+            data-testid="level-label-input"
+            className="flex-1 text-sm font-semibold bg-transparent outline-none border-b border-primary min-h-10"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             onBlur={commitLabel}
             onKeyDown={(e) => e.key === 'Enter' && commitLabel()}
           />
         ) : (
-          <span className="flex-1 text-sm font-semibold text-foreground">{level.label}</span>
+          <span className="flex-1 text-sm font-semibold text-foreground min-h-10 flex items-center" data-testid="level-label">
+            {level.label}
+          </span>
         )}
 
-        <button onClick={startEditLabel} className="text-muted-foreground hover:text-foreground transition-colors">
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
-        <button onClick={handleAddSpace} className="text-muted-foreground hover:text-foreground transition-colors">
-          <Plus className="w-4 h-4" />
-        </button>
-        <button onClick={onDeleteLevel} className="text-muted-foreground hover:text-destructive transition-colors">
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="iconTouch"
+          onClick={startEditLabel}
+          className="shrink-0 text-muted-foreground"
+          aria-label="Renommer le niveau"
+          data-testid="level-rename"
+        >
+          <Pencil className="w-5 h-5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="iconTouch"
+          onClick={handleAddSpace}
+          className="shrink-0 text-muted-foreground"
+          aria-label="Ajouter un espace"
+          data-testid="level-add-space"
+        >
+          <Plus className="w-5 h-5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="iconTouch"
+          onClick={onDeleteLevel}
+          className="shrink-0 text-muted-foreground hover:text-destructive"
+          aria-label="Supprimer le niveau"
+          data-testid="level-delete"
+        >
+          <Trash2 className="w-5 h-5" />
+        </Button>
       </div>
 
       {/* Spaces within level */}
@@ -254,10 +323,11 @@ function LevelSection({
           ))}
 
           {addingSpace && (
-            <div className="flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-lg">
+            <div className="flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-lg" data-testid="new-space-input-row">
               <Input
                 ref={spaceInputRef}
-                className="flex-1 h-7 text-sm border-0 shadow-none focus-visible:ring-0 p-0"
+                data-testid="new-space-name-input"
+                className="flex-1 min-h-10 text-sm border-0 shadow-none focus-visible:ring-0 p-0"
                 placeholder="Nom de l'espace…"
                 value={newSpaceName}
                 onChange={(e) => setNewSpaceName(e.target.value)}
@@ -499,27 +569,34 @@ function InspectionDetailPage() {
     <div className="min-h-screen bg-background pb-20">
       <OfflineBar />
 
-      <header className="sticky top-7 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3">
-        <button
+      <header className="sticky top-8 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="iconTouch"
           onClick={() => navigate({ to: '/inspections' })}
-          className="text-muted-foreground hover:text-foreground transition-colors"
+          className="shrink-0 text-muted-foreground"
+          aria-label="Retour"
+          data-testid="inspection-back"
         >
           <ChevronLeft className="w-5 h-5" />
-        </button>
+        </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-semibold truncate">{inspection.owner_name || 'Sans nom'}</h1>
           <p className="text-xs text-muted-foreground truncate">{inspection.address || '—'}</p>
         </div>
         <Button
-          size="sm"
+          size="iconTouch"
           variant="ghost"
           onClick={() => navigate({ to: '/inspections/$id/edit', params: { id } })}
+          aria-label="Modifier l'inspection"
+          data-testid="inspection-edit"
         >
-          <Pencil className="w-4 h-4" />
+          <Pencil className="w-5 h-5" />
         </Button>
       </header>
 
-      <main className="p-4 space-y-3">
+      <main className="p-4 space-y-3" data-testid="levels-spaces-main">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -552,10 +629,11 @@ function InspectionDetailPage() {
 
         {/* Add level */}
         {addingLevel ? (
-          <div className="flex items-center gap-2 px-2 py-1.5 border border-dashed border-border rounded-md">
+          <div className="flex items-center gap-2 px-2 py-1.5 border border-dashed border-border rounded-md" data-testid="new-level-input-row">
             <Input
               ref={levelInputRef}
-              className="flex-1 h-7 text-sm border-0 shadow-none focus-visible:ring-0 p-0 font-semibold"
+              data-testid="new-level-name-input"
+              className="flex-1 min-h-10 text-sm border-0 shadow-none focus-visible:ring-0 p-0 font-semibold"
               placeholder="Nom du niveau…"
               value={newLevelLabel}
               onChange={(e) => setNewLevelLabel(e.target.value)}
@@ -568,10 +646,12 @@ function InspectionDetailPage() {
           </div>
         ) : (
           <button
+            type="button"
             onClick={handleAddLevel}
-            className="w-full flex items-center gap-2 px-3 py-2.5 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            data-testid="add-level"
+            className="w-full flex items-center justify-center gap-2 min-h-11 px-3 py-2.5 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-5 h-5 shrink-0" />
             Ajouter un niveau
           </button>
         )}

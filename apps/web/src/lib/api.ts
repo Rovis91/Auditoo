@@ -19,11 +19,14 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   })
+  const text = await res.text()
   if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err || res.statusText)
+    throw new Error(text || res.statusText)
   }
-  return res.json() as Promise<T>
+  if (!text.trim()) {
+    return undefined as T
+  }
+  return JSON.parse(text) as T
 }
 
 // Convert known camelCase foreign-key fields to the snake_case shape the UI

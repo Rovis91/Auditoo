@@ -173,19 +173,19 @@ One-day build with AI assistance. Each phase lists concrete tasks and its depend
 ## Phase 7 — Polish, Testing & Docs (60 min)
 **Dependencies:** All previous phases
 
-- [ ] Mobile review: open on real device or Chrome DevTools mobile emulator
+- [x] Mobile review: open on real device or Chrome DevTools mobile emulator
   - Check tap target sizes (min 44×44 px)
   - Verify drag handles are thumb-reachable
   - Test swipe-to-delete on touch
   - Check form keyboard behavior (no input hidden behind keyboard)
-- [ ] Apply consistent spacing, typography, and color using shadcn tokens from `scraped.css`
-- [ ] Add `apple-touch-icon` and PWA manifest fields for iOS installability
-- [ ] Cypress: write one E2E test covering the critical path:
-  - Log in → create inspection → add a level → add a space → rename space → delete level
-- [ ] `npm run db:types` — regenerate and commit final types
-- [ ] Verify `npm run dev` starts cleanly from scratch (fresh clone)
-- [ ] Final `DESIGN.md` pass: confirm all trade-offs are documented
-- [ ] Commit: `feat: mobile polish, Cypress E2E, final docs`
+- [x] Apply consistent spacing, typography, and color using shadcn tokens from `scraped.css`
+- [x] Add `apple-touch-icon` and PWA manifest fields for iOS installability
+- [x] Cypress: write one E2E test covering the critical path:
+  - Log in → create inspection → add a level → add a space → rename space → delete level (+ space detail fields)
+- [x] `npm run db:types` — regenerate and commit final types
+- [x] Verify `npm run dev` starts cleanly from scratch (fresh clone) — see `docs/SETUP.md`
+- [x] Final `DESIGN.md` pass: confirm all trade-offs are documented
+- [x] Commit: `feat: mobile polish, Cypress E2E, final docs`
 
 ---
 

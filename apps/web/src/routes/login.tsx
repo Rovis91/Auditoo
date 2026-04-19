@@ -47,17 +47,18 @@ function LoginPage() {
           <p className="text-sm text-muted-foreground">Connectez-vous pour accéder à vos inspections</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" data-testid="login-form">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
+              data-testid="login-email"
               type="email"
               autoComplete="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="inspector@auditoo.eco"
+              placeholder="agent@exemple.com"
             />
           </div>
 
@@ -65,6 +66,7 @@ function LoginPage() {
             <Label htmlFor="password">Mot de passe</Label>
             <Input
               id="password"
+              data-testid="login-password"
               type="password"
               autoComplete="current-password"
               required
@@ -74,10 +76,12 @@ function LoginPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-destructive" data-testid="login-error">
+              {error}
+            </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full min-h-11" disabled={loading} data-testid="login-submit">
             {loading ? 'Connexion…' : 'Se connecter'}
           </Button>
         </form>

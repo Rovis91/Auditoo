@@ -98,8 +98,8 @@ When designing or building UI in `apps/web`, **always** use `.agents/skills/fron
 
 ## Seeded Test Credentials
 
-- Email: `inspector@auditoo.eco`
-- Password: `password123`
+- Email: `agent@exemple.com`
+- Password: `motdepasse`
 
 ## Intentional Simplifications (do not "fix" without discussion)
 

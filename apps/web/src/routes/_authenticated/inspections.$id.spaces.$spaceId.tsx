@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -23,6 +24,12 @@ const HEATING_TYPES = [
 ]
 const VENTILATION_TYPES = ['VMC simple flux', 'VMC double flux', 'Ventilation naturelle', 'Insufflation', 'Autre']
 const INSULATION_RATINGS = ['Très bonne', 'Bonne', 'Moyenne', 'Mauvaise', 'Très mauvaise']
+
+function scrollFieldIntoView(e: React.FocusEvent<HTMLElement>) {
+  requestAnimationFrame(() => {
+    e.target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  })
+}
 
 function SpaceDetailPage() {
   const { id, spaceId } = Route.useParams()
@@ -71,25 +78,34 @@ function SpaceDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-dvh flex flex-col bg-background pb-24">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3">
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="iconTouch"
           onClick={() => navigate({ to: '/inspections/$id', params: { id } })}
-          className="text-muted-foreground hover:text-foreground transition-colors"
+          className="shrink-0 text-muted-foreground"
+          aria-label="Retour"
+          data-testid="space-detail-back"
         >
           <ChevronLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-lg font-semibold truncate">{space.name}</h1>
+        </Button>
+        <h1 className="text-lg font-semibold truncate" data-testid="space-detail-title">
+          {space.name}
+        </h1>
       </header>
 
-      <div className="p-4 space-y-5 max-w-lg mx-auto">
+      <main className="flex-1 overflow-y-auto p-4 space-y-5 max-w-lg mx-auto w-full scroll-pb-28">
         <div className="space-y-2">
           <Label htmlFor="name">Nom de l'espace</Label>
           <Input
             id="name"
+            data-testid="space-detail-name"
             value={space.name}
             onChange={(e) => handleChange('name', e.target.value)}
             onBlur={(e) => autosave('name', e.target.value)}
+            onFocus={scrollFieldIntoView}
           />
         </div>
 
@@ -98,21 +114,25 @@ function SpaceDetailPage() {
             <Label htmlFor="area">Surface (m²)</Label>
             <Input
               id="area"
+              data-testid="space-detail-area"
               type="number"
               min={0}
               step={0.1}
               value={space.area ?? ''}
               onChange={(e) => handleChange('area', e.target.value ? Number(e.target.value) : null)}
+              onFocus={scrollFieldIntoView}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="window_count">Nb. fenêtres</Label>
             <Input
               id="window_count"
+              data-testid="space-detail-window-count"
               type="number"
               min={0}
               value={space.window_count ?? ''}
               onChange={(e) => handleChange('window_count', e.target.value ? Number(e.target.value) : null)}
+              onFocus={scrollFieldIntoView}
             />
           </div>
         </div>
@@ -123,7 +143,7 @@ function SpaceDetailPage() {
             value={space.glazing_type ?? ''}
             onValueChange={(v) => handleChange('glazing_type', v || null)}
           >
-            <SelectTrigger>
+            <SelectTrigger data-testid="space-detail-glazing">
               <SelectValue placeholder="Sélectionner…" />
             </SelectTrigger>
             <SelectContent>
@@ -138,6 +158,7 @@ function SpaceDetailPage() {
             <Label htmlFor="heating_presence">Chauffage présent</Label>
             <Switch
               id="heating_presence"
+              data-testid="space-detail-heating-presence"
               checked={space.heating_presence}
               onCheckedChange={(v) => handleChange('heating_presence', v)}
             />
@@ -150,7 +171,7 @@ function SpaceDetailPage() {
                 value={space.heating_type ?? ''}
                 onValueChange={(v) => handleChange('heating_type', v || null)}
               >
-                <SelectTrigger>
+                <SelectTrigger data-testid="space-detail-heating-type">
                   <SelectValue placeholder="Sélectionner…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -167,6 +188,7 @@ function SpaceDetailPage() {
             <Label htmlFor="ventilation_presence">Ventilation présente</Label>
             <Switch
               id="ventilation_presence"
+              data-testid="space-detail-ventilation-presence"
               checked={space.ventilation_presence}
               onCheckedChange={(v) => handleChange('ventilation_presence', v)}
             />
@@ -179,7 +201,7 @@ function SpaceDetailPage() {
                 value={space.ventilation_type ?? ''}
                 onValueChange={(v) => handleChange('ventilation_type', v || null)}
               >
-                <SelectTrigger>
+                <SelectTrigger data-testid="space-detail-ventilation-type">
                   <SelectValue placeholder="Sélectionner…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -196,7 +218,7 @@ function SpaceDetailPage() {
             value={space.insulation_rating ?? ''}
             onValueChange={(v) => handleChange('insulation_rating', v || null)}
           >
-            <SelectTrigger>
+            <SelectTrigger data-testid="space-detail-insulation">
               <SelectValue placeholder="Sélectionner…" />
             </SelectTrigger>
             <SelectContent>
@@ -204,7 +226,7 @@ function SpaceDetailPage() {
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </main>
 
       <VoiceBar
         inspectionId={id}

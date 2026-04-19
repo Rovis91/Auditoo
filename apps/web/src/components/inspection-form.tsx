@@ -98,11 +98,12 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
         </h1>
       </header>
 
-      <form onSubmit={handleSubmit} className="p-4 space-y-5 max-w-lg mx-auto pb-10">
+      <form onSubmit={handleSubmit} className="p-4 space-y-5 max-w-lg mx-auto pb-10" data-testid="inspection-form">
         <div className="space-y-2">
           <Label htmlFor="owner_name">Nom du propriétaire</Label>
           <Input
             id="owner_name"
+            data-testid="inspection-owner-name"
             value={fields.owner_name}
             onChange={(e) => set('owner_name', e.target.value)}
             placeholder="Jean Dupont"
@@ -241,7 +242,7 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" className="w-full min-h-11" disabled={isLoading} data-testid="inspection-submit">
           {isLoading ? 'Enregistrement…' : inspection ? 'Enregistrer les modifications' : 'Créer l\'inspection'}
         </Button>
       </form>
