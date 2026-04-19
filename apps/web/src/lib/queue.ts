@@ -2,12 +2,24 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 
 export type MutationMethod = 'POST' | 'PATCH' | 'DELETE'
 
+export type MutationPayloadType = 'json' | 'voice'
+
+/** Body for queued `POST /voice` (offline); audio as raw base64 (no data: prefix). */
+export interface VoiceQueuedBody {
+  inspectionId: string
+  spaceId?: string
+  audioBase64: string
+  mimeType: string
+}
+
 export interface QueuedMutation {
   id?: number
   endpoint: string
   method: MutationMethod
   body: unknown | null
   timestamp: number
+  /** Omit or `json` for JSON bodies; `voice` for multipart replay from `VoiceQueuedBody`. */
+  payloadType?: MutationPayloadType
   /** Synthesized UUID used offline; mapped to server `id` after a successful POST flush. */
   clientEntityId?: string
 }
@@ -32,7 +44,7 @@ interface AuditooDB extends DBSchema {
 const DB_NAME = 'auditoo'
 const MUTATIONS = 'mutations'
 const RESPONSES = 'responses'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 let dbPromise: Promise<IDBPDatabase<AuditooDB>> | null = null
 
@@ -46,6 +58,7 @@ function getDb() {
         if (oldVersion < 2) {
           db.createObjectStore(RESPONSES, { keyPath: 'url' })
         }
+        // v3: QueuedMutation may include payloadType + voice body shape (no store shape change)
       },
     })
   }

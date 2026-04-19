@@ -1,5 +1,8 @@
 import { TOKEN_KEY } from '@/contexts'
-import { mutationQueue } from './queue'
+import { mutationQueue, type VoiceQueuedBody } from './queue'
+
+/** Dispatched after a queued `POST /voice` succeeds during flush (detail: `{ inspectionId }`). */
+export const VOICE_SYNCED_EVENT = 'auditoo:voice-synced'
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001'
 const HEALTH_INTERVAL_MS = 30_000
@@ -27,13 +30,21 @@ function resolveBody(body: unknown, idMap: Map<string, string>): unknown {
   return o
 }
 
+function base64ToBlob(b64: string, mimeType: string): Blob {
+  const binary = atob(b64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return new Blob([bytes], { type: mimeType || 'audio/webm' })
+}
+
+/** True when the API is reachable. Uses `/health` (unauthenticated) — not `BASE` root, which is JWT-protected and returns 401 without a Bearer token. */
 async function ping(): Promise<boolean> {
   if (!navigator.onLine) return false
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), PING_TIMEOUT_MS)
   try {
-    await fetch(BASE, { method: 'HEAD', signal: ctrl.signal, mode: 'no-cors' })
-    return true
+    const res = await fetch(`${BASE}/health`, { method: 'GET', signal: ctrl.signal })
+    return res.ok
   } catch {
     return false
   } finally {
@@ -51,17 +62,34 @@ export async function flush(): Promise<void> {
     for (const m of pending) {
       const token = localStorage.getItem(TOKEN_KEY)
       const endpoint = resolveEndpoint(m.endpoint, idMap)
+      const isVoice = m.payloadType === 'voice'
       const body = resolveBody(m.body, idMap)
 
       try {
-        const res = await fetch(`${BASE}${endpoint}`, {
-          method: m.method,
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: m.body == null ? undefined : JSON.stringify(body),
-        })
+        let res: Response
+        if (isVoice && m.method === 'POST' && body && typeof body === 'object') {
+          const vb = body as VoiceQueuedBody
+          const blob = base64ToBlob(vb.audioBase64, vb.mimeType)
+          const fd = new FormData()
+          const fname = vb.mimeType.includes('webm') ? 'recording.webm' : 'recording'
+          fd.append('audio', blob, fname)
+          fd.append('inspectionId', vb.inspectionId)
+          if (vb.spaceId) fd.append('spaceId', vb.spaceId)
+          res = await fetch(`${BASE}${endpoint}`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: fd,
+          })
+        } else {
+          res = await fetch(`${BASE}${endpoint}`, {
+            method: m.method,
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: m.body == null ? undefined : JSON.stringify(body),
+          })
+        }
         const text = await res.text()
 
         if (res.status >= 500) {
@@ -70,7 +98,13 @@ export async function flush(): Promise<void> {
 
         if (res.status >= 200 && res.status < 300) {
           if (m.id != null) await mutationQueue.remove(m.id)
-          if (m.method === 'POST' && m.clientEntityId && text.length > 0) {
+          if (isVoice && body && typeof body === 'object') {
+            const vb = body as VoiceQueuedBody
+            window.dispatchEvent(
+              new CustomEvent(VOICE_SYNCED_EVENT, { detail: { inspectionId: vb.inspectionId } }),
+            )
+          }
+          if (m.method === 'POST' && m.clientEntityId && text.length > 0 && !isVoice) {
             try {
               const data = JSON.parse(text) as { id?: string }
               if (data?.id) idMap.set(m.clientEntityId, data.id)

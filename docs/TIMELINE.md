@@ -153,20 +153,20 @@ One-day build with AI assistance. Each phase lists concrete tasks and its depend
 ## Phase 6 — Voice AI (60 min)
 **Dependencies:** Phases 2 and 4
 
-- [ ] `VoiceBar` component: mic button, waveform or timer display, stop button
-- [ ] Use `MediaRecorder` API: record until user stops → `audio/webm` blob
-- [ ] If offline: serialize blob to base64 → enqueue as `POST /voice` mutation in IndexedDB with blob payload
-- [ ] If online: `POST /voice` multipart form with audio blob + `inspectionId` + optional `spaceId`
-- [ ] API `POST /voice` handler:
+- [x] `VoiceBar` component: mic button, waveform or timer display, stop button
+- [x] Use `MediaRecorder` API: record until user stops → `audio/webm` blob
+- [x] If offline: serialize blob to base64 → enqueue as `POST /voice` mutation in IndexedDB with blob payload
+- [x] If online: `POST /voice` multipart form with audio blob + `inspectionId` + optional `spaceId`
+- [x] API `POST /voice` handler:
   - Send blob to OpenAI Whisper (`whisper-1`, language `fr`)
   - Build GPT prompt: include transcript + current inspection/space context from DB
   - Parse GPT JSON response → validate field names against schema
   - Apply changes via Supabase service-role client
-  - Return `{ changes: [...] }` to frontend
-- [ ] Frontend on response: merge returned changes into local state
-- [ ] UI states: idle → recording → (queued if offline | processing if online) → done / error
-- [ ] Place `VoiceBar` on levels/spaces screen and space detail page
-- [ ] Commit: `feat: voice AI pipeline with Whisper and GPT`
+  - Return `{ changes: [...] }` (and optional `createdLevels` / `createdSpaces`) to frontend
+- [x] Frontend on response: merge returned changes into local state
+- [x] UI states: idle → recording → (queued if offline | processing if online) → done / error
+- [x] Place `VoiceBar` on levels/spaces screen and space detail page
+- [x] Commit: `feat: voice AI pipeline with Whisper and GPT`
 
 ---
 

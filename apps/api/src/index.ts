@@ -14,12 +14,15 @@ app.use(
   '*',
   cors({
     origin: (origin) => origin ?? '*',
-    allowHeaders: ['Content-Type', 'Authorization'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
 )
 
 app.route('/auth', authRouter)
+
+/** Public liveness check for the sync manager ping (no JWT — see apps/web/src/lib/sync.ts). */
+app.get('/health', (c) => c.json({ ok: true }))
 
 app.use('*', authMiddleware)
 

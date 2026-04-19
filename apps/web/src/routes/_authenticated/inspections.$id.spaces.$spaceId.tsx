@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch'
 import { VoiceBar } from '@/components/voice-bar'
 import { api } from '@/lib/api'
 import type { InspectionWithLevels, Space } from '@/lib/api-types'
+import { VOICE_SYNCED_EVENT } from '@/lib/sync'
 
 const GLAZING_TYPES = ['Simple vitrage', 'Double vitrage', 'Triple vitrage']
 const HEATING_TYPES = [
@@ -29,12 +30,25 @@ function SpaceDetailPage() {
   const [space, setSpace] = useState<Space | null>(null)
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
-  useEffect(() => {
+  const loadSpace = useCallback(() => {
     api.get<InspectionWithLevels>(`/inspections/${id}`).then((insp) => {
       const found = insp.levels.flatMap((l) => l.spaces).find((s) => s.id === spaceId)
       if (found) setSpace(found)
     })
   }, [id, spaceId])
+
+  useEffect(() => {
+    loadSpace()
+  }, [loadSpace])
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ inspectionId: string }>
+      if (ce.detail?.inspectionId === id) void loadSpace()
+    }
+    window.addEventListener(VOICE_SYNCED_EVENT, handler)
+    return () => window.removeEventListener(VOICE_SYNCED_EVENT, handler)
+  }, [id, loadSpace])
 
   function autosave(field: keyof Space, value: unknown) {
     clearTimeout(saveTimers.current[field])
@@ -192,7 +206,11 @@ function SpaceDetailPage() {
         </div>
       </div>
 
-      <VoiceBar />
+      <VoiceBar
+        inspectionId={id}
+        spaceId={spaceId}
+        onComplete={(r) => { if (r.status === 'applied') void loadSpace() }}
+      />
     </div>
   )
 }

@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input'
 import { OfflineBar } from '@/components/offline-bar'
 import { VoiceBar } from '@/components/voice-bar'
 import { api } from '@/lib/api'
+import { VOICE_SYNCED_EVENT } from '@/lib/sync'
 import type { InspectionWithLevels, Level, LevelWithSpaces, Space } from '@/lib/api-types'
 
 // ─────────────────────────────────────────────
@@ -297,6 +298,15 @@ function InspectionDetailPage() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ inspectionId: string }>
+      if (ce.detail?.inspectionId === id) void load()
+    }
+    window.addEventListener(VOICE_SYNCED_EVENT, handler)
+    return () => window.removeEventListener(VOICE_SYNCED_EVENT, handler)
+  }, [id, load])
+
   // ── Add level ──────────────────────────────
   const [addingLevel, setAddingLevel] = useState(false)
   const [newLevelLabel, setNewLevelLabel] = useState('')
@@ -567,7 +577,7 @@ function InspectionDetailPage() {
         )}
       </main>
 
-      <VoiceBar />
+      <VoiceBar inspectionId={id} onComplete={(r) => { if (r.status === 'applied') void load() }} />
     </div>
   )
 }

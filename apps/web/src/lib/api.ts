@@ -4,6 +4,7 @@ import {
   getCachedResponse,
   setCachedResponse,
   type MutationMethod,
+  type VoiceQueuedBody,
 } from './queue'
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001'
@@ -127,6 +128,110 @@ async function get<T>(path: string): Promise<T> {
   }
 }
 
+export type VoiceChange = {
+  table: 'inspections' | 'spaces'
+  id: string
+  field: string
+  value: unknown
+}
+
+export type PostVoiceResult =
+  | {
+      status: 'applied'
+      changes: VoiceChange[]
+      /** Present when the voice pipeline created levels (server response). */
+      createdLevels?: unknown[]
+      createdSpaces?: unknown[]
+    }
+  | { status: 'queued' }
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => {
+      const d = r.result as string
+      const i = d.indexOf(',')
+      resolve(i >= 0 ? d.slice(i + 1) : d)
+    }
+    r.onerror = () => reject(r.error)
+    r.readAsDataURL(blob)
+  })
+}
+
+async function postVoiceFetch(
+  blob: Blob,
+  inspectionId: string,
+  spaceId: string | undefined,
+): Promise<{
+  changes: VoiceChange[]
+  createdLevels?: unknown[]
+  createdSpaces?: unknown[]
+}> {
+  const token = localStorage.getItem(TOKEN_KEY)
+  const fd = new FormData()
+  const name = blob.type.includes('webm') ? 'recording.webm' : 'recording'
+  fd.append('audio', blob, name)
+  fd.append('inspectionId', inspectionId)
+  if (spaceId) fd.append('spaceId', spaceId)
+  const res = await fetch(`${BASE}/voice`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: fd,
+  })
+  const text = await res.text()
+  if (!res.ok) {
+    throw new Error(text || res.statusText)
+  }
+  try {
+    const data = JSON.parse(text) as {
+      changes?: VoiceChange[]
+      createdLevels?: unknown[]
+      createdSpaces?: unknown[]
+    }
+    return {
+      changes: data.changes ?? [],
+      createdLevels: data.createdLevels,
+      createdSpaces: data.createdSpaces,
+    }
+  } catch {
+    return { changes: [] }
+  }
+}
+
+/**
+ * Online: multipart POST /voice. Offline: enqueue base64 payload for sync flush.
+ */
+export async function postVoice(
+  blob: Blob,
+  inspectionId: string,
+  spaceId?: string,
+): Promise<PostVoiceResult> {
+  if (navigator.onLine) {
+    const payload = await postVoiceFetch(blob, inspectionId, spaceId)
+    return {
+      status: 'applied',
+      changes: payload.changes,
+      createdLevels: payload.createdLevels,
+      createdSpaces: payload.createdSpaces,
+    }
+  }
+  const audioBase64 = await blobToBase64(blob)
+  const body: VoiceQueuedBody = {
+    inspectionId,
+    spaceId,
+    audioBase64,
+    mimeType: blob.type || 'audio/webm',
+  }
+  await mutationQueue.enqueue({
+    endpoint: '/voice',
+    method: 'POST',
+    body,
+    timestamp: Date.now(),
+    payloadType: 'voice',
+  })
+  return { status: 'queued' }
+}
+
 async function mutate<T>(method: MutationMethod, path: string, body: unknown | null): Promise<T> {
   if (navigator.onLine) {
     return apiFetch<T>(path, {
@@ -141,12 +246,19 @@ async function mutate<T>(method: MutationMethod, path: string, body: unknown | n
       method,
       body,
       timestamp: Date.now(),
+      payloadType: 'json',
       clientEntityId: synthesized.id as string,
     })
     await primeCachesOnOfflinePost(path, body, synthesized)
     return synthesized as T
   }
-  await mutationQueue.enqueue({ endpoint: path, method, body, timestamp: Date.now() })
+  await mutationQueue.enqueue({
+    endpoint: path,
+    method,
+    body,
+    timestamp: Date.now(),
+    payloadType: 'json',
+  })
   return undefined as T
 }
 
@@ -155,4 +267,5 @@ export const api = {
   post: <T>(path: string, body: unknown) => mutate<T>('POST', path, body),
   patch: <T>(path: string, body: unknown) => mutate<T>('PATCH', path, body),
   delete: (path: string) => mutate<void>('DELETE', path, null),
+  postVoice,
 }
