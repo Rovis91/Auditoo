@@ -2,7 +2,7 @@ import { TOKEN_KEY } from '@/contexts'
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001'
 
-// Phase 5: offline queue interceptor goes here — check navigator.onLine before fetch
+// Phase 5: offline queue interceptor — check navigator.onLine before fetch
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = localStorage.getItem(TOKEN_KEY)
@@ -29,6 +29,3 @@ export const api = {
     apiFetch<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (path: string) => apiFetch<void>(path, { method: 'DELETE' }),
 }
-
-// Phase 4 login: api.post('/auth/login', { email, password })
-// Requires a POST /auth/login route in apps/api (add in Phase 4)

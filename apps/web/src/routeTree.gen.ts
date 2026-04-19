@@ -11,9 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedInspectionsRouteImport } from './routes/_authenticated/inspections'
+import { Route as AuthenticatedInspectionsIndexRouteImport } from './routes/_authenticated/inspections.index'
 import { Route as AuthenticatedInspectionsNewRouteImport } from './routes/_authenticated/inspections.new'
 import { Route as AuthenticatedInspectionsIdRouteImport } from './routes/_authenticated/inspections.$id'
+import { Route as AuthenticatedInspectionsIdIndexRouteImport } from './routes/_authenticated/inspections.$id.index'
 import { Route as AuthenticatedInspectionsIdEditRouteImport } from './routes/_authenticated/inspections.$id.edit'
 import { Route as AuthenticatedInspectionsIdSpacesSpaceIdRouteImport } from './routes/_authenticated/inspections.$id.spaces.$spaceId'
 
@@ -26,11 +29,22 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedInspectionsRoute =
   AuthenticatedInspectionsRouteImport.update({
     id: '/inspections',
     path: '/inspections',
     getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedInspectionsIndexRoute =
+  AuthenticatedInspectionsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedInspectionsRoute,
   } as any)
 const AuthenticatedInspectionsNewRoute =
   AuthenticatedInspectionsNewRouteImport.update({
@@ -43,6 +57,12 @@ const AuthenticatedInspectionsIdRoute =
     id: '/$id',
     path: '/$id',
     getParentRoute: () => AuthenticatedInspectionsRoute,
+  } as any)
+const AuthenticatedInspectionsIdIndexRoute =
+  AuthenticatedInspectionsIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedInspectionsIdRoute,
   } as any)
 const AuthenticatedInspectionsIdEditRoute =
   AuthenticatedInspectionsIdEditRouteImport.update({
@@ -58,21 +78,23 @@ const AuthenticatedInspectionsIdSpacesSpaceIdRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedRouteWithChildren
+  '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
   '/inspections': typeof AuthenticatedInspectionsRouteWithChildren
   '/inspections/$id': typeof AuthenticatedInspectionsIdRouteWithChildren
   '/inspections/new': typeof AuthenticatedInspectionsNewRoute
+  '/inspections/': typeof AuthenticatedInspectionsIndexRoute
   '/inspections/$id/edit': typeof AuthenticatedInspectionsIdEditRoute
+  '/inspections/$id/': typeof AuthenticatedInspectionsIdIndexRoute
   '/inspections/$id/spaces/$spaceId': typeof AuthenticatedInspectionsIdSpacesSpaceIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/inspections': typeof AuthenticatedInspectionsRouteWithChildren
-  '/inspections/$id': typeof AuthenticatedInspectionsIdRouteWithChildren
+  '/': typeof AuthenticatedIndexRoute
   '/inspections/new': typeof AuthenticatedInspectionsNewRoute
+  '/inspections': typeof AuthenticatedInspectionsIndexRoute
   '/inspections/$id/edit': typeof AuthenticatedInspectionsIdEditRoute
+  '/inspections/$id': typeof AuthenticatedInspectionsIdIndexRoute
   '/inspections/$id/spaces/$spaceId': typeof AuthenticatedInspectionsIdSpacesSpaceIdRoute
 }
 export interface FileRoutesById {
@@ -80,9 +102,12 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/inspections': typeof AuthenticatedInspectionsRouteWithChildren
+  '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/inspections/$id': typeof AuthenticatedInspectionsIdRouteWithChildren
   '/_authenticated/inspections/new': typeof AuthenticatedInspectionsNewRoute
+  '/_authenticated/inspections/': typeof AuthenticatedInspectionsIndexRoute
   '/_authenticated/inspections/$id/edit': typeof AuthenticatedInspectionsIdEditRoute
+  '/_authenticated/inspections/$id/': typeof AuthenticatedInspectionsIdIndexRoute
   '/_authenticated/inspections/$id/spaces/$spaceId': typeof AuthenticatedInspectionsIdSpacesSpaceIdRoute
 }
 export interface FileRouteTypes {
@@ -93,25 +118,30 @@ export interface FileRouteTypes {
     | '/inspections'
     | '/inspections/$id'
     | '/inspections/new'
+    | '/inspections/'
     | '/inspections/$id/edit'
+    | '/inspections/$id/'
     | '/inspections/$id/spaces/$spaceId'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/login'
-    | '/inspections'
-    | '/inspections/$id'
+    | '/'
     | '/inspections/new'
+    | '/inspections'
     | '/inspections/$id/edit'
+    | '/inspections/$id'
     | '/inspections/$id/spaces/$spaceId'
   id:
     | '__root__'
     | '/_authenticated'
     | '/login'
     | '/_authenticated/inspections'
+    | '/_authenticated/'
     | '/_authenticated/inspections/$id'
     | '/_authenticated/inspections/new'
+    | '/_authenticated/inspections/'
     | '/_authenticated/inspections/$id/edit'
+    | '/_authenticated/inspections/$id/'
     | '/_authenticated/inspections/$id/spaces/$spaceId'
   fileRoutesById: FileRoutesById
 }
@@ -136,12 +166,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/': {
+      id: '/_authenticated/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/inspections': {
       id: '/_authenticated/inspections'
       path: '/inspections'
       fullPath: '/inspections'
       preLoaderRoute: typeof AuthenticatedInspectionsRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/inspections/': {
+      id: '/_authenticated/inspections/'
+      path: '/'
+      fullPath: '/inspections/'
+      preLoaderRoute: typeof AuthenticatedInspectionsIndexRouteImport
+      parentRoute: typeof AuthenticatedInspectionsRoute
     }
     '/_authenticated/inspections/new': {
       id: '/_authenticated/inspections/new'
@@ -156,6 +200,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/inspections/$id'
       preLoaderRoute: typeof AuthenticatedInspectionsIdRouteImport
       parentRoute: typeof AuthenticatedInspectionsRoute
+    }
+    '/_authenticated/inspections/$id/': {
+      id: '/_authenticated/inspections/$id/'
+      path: '/'
+      fullPath: '/inspections/$id/'
+      preLoaderRoute: typeof AuthenticatedInspectionsIdIndexRouteImport
+      parentRoute: typeof AuthenticatedInspectionsIdRoute
     }
     '/_authenticated/inspections/$id/edit': {
       id: '/_authenticated/inspections/$id/edit'
@@ -176,12 +227,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedInspectionsIdRouteChildren {
   AuthenticatedInspectionsIdEditRoute: typeof AuthenticatedInspectionsIdEditRoute
+  AuthenticatedInspectionsIdIndexRoute: typeof AuthenticatedInspectionsIdIndexRoute
   AuthenticatedInspectionsIdSpacesSpaceIdRoute: typeof AuthenticatedInspectionsIdSpacesSpaceIdRoute
 }
 
 const AuthenticatedInspectionsIdRouteChildren: AuthenticatedInspectionsIdRouteChildren =
   {
     AuthenticatedInspectionsIdEditRoute: AuthenticatedInspectionsIdEditRoute,
+    AuthenticatedInspectionsIdIndexRoute: AuthenticatedInspectionsIdIndexRoute,
     AuthenticatedInspectionsIdSpacesSpaceIdRoute:
       AuthenticatedInspectionsIdSpacesSpaceIdRoute,
   }
@@ -194,6 +247,7 @@ const AuthenticatedInspectionsIdRouteWithChildren =
 interface AuthenticatedInspectionsRouteChildren {
   AuthenticatedInspectionsIdRoute: typeof AuthenticatedInspectionsIdRouteWithChildren
   AuthenticatedInspectionsNewRoute: typeof AuthenticatedInspectionsNewRoute
+  AuthenticatedInspectionsIndexRoute: typeof AuthenticatedInspectionsIndexRoute
 }
 
 const AuthenticatedInspectionsRouteChildren: AuthenticatedInspectionsRouteChildren =
@@ -201,6 +255,7 @@ const AuthenticatedInspectionsRouteChildren: AuthenticatedInspectionsRouteChildr
     AuthenticatedInspectionsIdRoute:
       AuthenticatedInspectionsIdRouteWithChildren,
     AuthenticatedInspectionsNewRoute: AuthenticatedInspectionsNewRoute,
+    AuthenticatedInspectionsIndexRoute: AuthenticatedInspectionsIndexRoute,
   }
 
 const AuthenticatedInspectionsRouteWithChildren =
@@ -210,10 +265,12 @@ const AuthenticatedInspectionsRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedInspectionsRoute: typeof AuthenticatedInspectionsRouteWithChildren
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedInspectionsRoute: AuthenticatedInspectionsRouteWithChildren,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
