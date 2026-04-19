@@ -2,7 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
+import { startSyncManager } from './lib/sync'
 import './globals.css'
+import 'react-day-picker/style.css'
 
 const router = createRouter({ routeTree })
 
@@ -15,6 +17,8 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js', { scope: '/' })
   })
 }
+
+startSyncManager()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

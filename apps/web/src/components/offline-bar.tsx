@@ -1,35 +1,34 @@
 import { useEffect, useState } from 'react'
+import { mutationQueue } from '@/lib/queue'
 
 type BarState = 'offline' | 'syncing' | 'synced'
 
-/** Phase 4: top status strip. Phase 5 will drive `syncing` from the mutation queue. */
-export function OfflineBar({ pendingMutations = 0 }: { pendingMutations?: number }) {
+export function OfflineBar() {
   const [online, setOnline] = useState(() =>
     typeof navigator !== 'undefined' ? navigator.onLine : true,
   )
+  const [pending, setPending] = useState(0)
 
   useEffect(() => {
-    function onOnline() {
-      setOnline(true)
-    }
-    function onOffline() {
-      setOnline(false)
-    }
+    const onOnline = () => setOnline(true)
+    const onOffline = () => setOnline(false)
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
+    const unsubscribe = mutationQueue.subscribe(setPending)
     return () => {
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
+      unsubscribe()
     }
   }, [])
 
-  const state: BarState = !online ? 'offline' : pendingMutations > 0 ? 'syncing' : 'synced'
+  const state: BarState = !online ? 'offline' : pending > 0 ? 'syncing' : 'synced'
 
   const label =
     state === 'offline'
       ? 'Hors ligne'
       : state === 'syncing'
-        ? `Synchronisation (${pendingMutations})…`
+        ? `Synchronisation (${pending})…`
         : 'Synchronisé'
 
   return (

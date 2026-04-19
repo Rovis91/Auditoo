@@ -282,10 +282,17 @@ function InspectionDetailPage() {
   const { id } = Route.useParams()
   const navigate = useNavigate()
   const [inspection, setInspection] = useState<InspectionWithLevels | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const load = useCallback(() => {
-    api.get<InspectionWithLevels>(`/inspections/${id}`).then(setInspection)
+    api
+      .get<InspectionWithLevels>(`/inspections/${id}`)
+      .then((data) => {
+        setInspection(data)
+        setLoadError(null)
+      })
+      .catch(() => setLoadError('Impossible de charger cette inspection hors ligne.'))
   }, [id])
 
   useEffect(() => { load() }, [load])
@@ -459,9 +466,18 @@ function InspectionDetailPage() {
     return (
       <div className="min-h-screen bg-background">
         <OfflineBar />
-        <div className="p-4 space-y-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />)}
-        </div>
+        {loadError ? (
+          <div className="p-4 space-y-4 text-center">
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+            <Button variant="outline" size="sm" onClick={() => navigate({ to: '/inspections' })}>
+              Retour aux inspections
+            </Button>
+          </div>
+        ) : (
+          <div className="p-4 space-y-3">
+            {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />)}
+          </div>
+        )}
       </div>
     )
   }
