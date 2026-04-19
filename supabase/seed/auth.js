@@ -10,8 +10,8 @@ export async function seedAuth() {
       Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
     },
     body: JSON.stringify({
-      email: 'inspector@auditoo.eco',
-      password: 'password123',
+      email: 'agent@exemple.com',
+      password: 'motdepasse',
       email_confirm: true,
     }),
   })

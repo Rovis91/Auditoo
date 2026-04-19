@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { ChevronLeft } from 'lucide-react'
+import { format, parse } from 'date-fns'
+import { fr } from 'date-fns/locale'
+import { CalendarIcon, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 import {
   Select,
   SelectContent,
@@ -45,6 +50,13 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
     insulation_context: inspection?.insulation_context ?? '',
   })
   const [error, setError] = useState<string | null>(null)
+  const [dateOpen, setDateOpen] = useState(false)
+
+  const validInspectionDate = (() => {
+    if (!fields.date) return undefined
+    const d = parse(fields.date, 'yyyy-MM-dd', new Date())
+    return Number.isNaN(d.getTime()) ? undefined : d
+  })()
 
   function set(key: string, value: string) {
     setFields((f) => ({ ...f, [key]: value }))
@@ -109,12 +121,36 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
 
         <div className="space-y-2">
           <Label htmlFor="date">Date d'inspection</Label>
-          <Input
-            id="date"
-            type="date"
-            value={fields.date}
-            onChange={(e) => set('date', e.target.value)}
-          />
+          <Popover open={dateOpen} onOpenChange={setDateOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                id="date"
+                type="button"
+                variant="outline"
+                className={cn(
+                  'w-full justify-start text-left font-normal',
+                  !validInspectionDate && 'text-muted-foreground'
+                )}
+              >
+                <CalendarIcon className="mr-2 size-4" />
+                {validInspectionDate
+                  ? format(validInspectionDate, 'PPP', { locale: fr })
+                  : 'Choisir une date'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                locale={fr}
+                selected={validInspectionDate}
+                onSelect={(d) => {
+                  set('date', d ? format(d, 'yyyy-MM-dd') : '')
+                  setDateOpen(false)
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="space-y-2">
