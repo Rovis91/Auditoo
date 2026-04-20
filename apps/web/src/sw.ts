@@ -10,6 +10,9 @@ declare global {
 
 declare const self: WorkerGlobalScope
 
+/** Baked at build time — must match `VITE_API_URL` so API calls are never cached or mishandled by the SW. */
+const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
@@ -17,7 +20,8 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     {
-      matcher: /^http:\/\/localhost:3001/,
+      matcher: ({ url }) =>
+        url.href.startsWith('http://localhost:3001') || (apiBase !== '' && url.href.startsWith(apiBase)),
       handler: new NetworkOnly(),
     },
     {

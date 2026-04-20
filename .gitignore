@@ -29,3 +29,5 @@ cypress/downloads/
 Thumbs.db
 .vscode/settings.json
 *.local
+
+.vercel
