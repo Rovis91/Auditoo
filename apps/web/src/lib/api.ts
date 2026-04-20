@@ -1,6 +1,7 @@
 import { TOKEN_KEY } from '@/contexts'
 import {
   mutationQueue,
+  deleteCachedResponse,
   getCachedResponse,
   setCachedResponse,
   type MutationMethod,
@@ -117,6 +118,22 @@ async function findInspectionsContainingLevel(levelId: string): Promise<string[]
     if (levels.some((l) => l.id === levelId)) urls.push(url)
   }
   return urls
+}
+
+/** `/inspections/:id` → id, or null if path does not match. */
+function inspectionIdFromDeletePath(path: string): string | null {
+  const m = path.match(/^\/inspections\/([^/]+)$/)
+  return m?.[1] ?? null
+}
+
+/** Remove inspection from cached list and drop cached detail (offline-first DELETE). */
+async function primeCachesOnInspectionDelete(inspectionId: string): Promise<void> {
+  const list = (await getCachedResponse<AnyRecord[]>('/inspections')) ?? []
+  const filtered = list.filter((row) => row.id !== inspectionId)
+  if (filtered.length !== list.length) {
+    await setCachedResponse('/inspections', filtered)
+  }
+  await deleteCachedResponse(`/inspections/${inspectionId}`)
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -237,10 +254,15 @@ export async function postVoice(
 
 async function mutate<T>(method: MutationMethod, path: string, body: unknown | null): Promise<T> {
   if (navigator.onLine) {
-    return apiFetch<T>(path, {
+    const result = await apiFetch<T>(path, {
       method,
       body: body == null ? undefined : JSON.stringify(body),
     })
+    if (method === 'DELETE') {
+      const id = inspectionIdFromDeletePath(path)
+      if (id) await primeCachesOnInspectionDelete(id)
+    }
+    return result
   }
   if (method === 'POST' && body != null) {
     const synthesized = synthesizeRow<AnyRecord>(body)
@@ -254,6 +276,18 @@ async function mutate<T>(method: MutationMethod, path: string, body: unknown | n
     })
     await primeCachesOnOfflinePost(path, body, synthesized)
     return synthesized as T
+  }
+  if (method === 'DELETE') {
+    await mutationQueue.enqueue({
+      endpoint: path,
+      method,
+      body,
+      timestamp: Date.now(),
+      payloadType: 'json',
+    })
+    const id = inspectionIdFromDeletePath(path)
+    if (id) await primeCachesOnInspectionDelete(id)
+    return undefined as T
   }
   await mutationQueue.enqueue({
     endpoint: path,

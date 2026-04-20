@@ -1,12 +1,16 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { NotFoundPage } from '@/components/not-found-page'
 import { routeTree } from './routeTree.gen'
 import { startSyncManager } from './lib/sync'
 import './globals.css'
 import 'react-day-picker/style.css'
 
-const router = createRouter({ routeTree })
+const router = createRouter({
+  routeTree,
+  defaultNotFoundComponent: NotFoundPage,
+})
 
 declare module '@tanstack/react-router' {
   interface Register { router: typeof router }

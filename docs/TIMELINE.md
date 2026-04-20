@@ -7,48 +7,48 @@ One-day build with AI assistance. Each phase lists concrete tasks and its depend
 ## Phase 0 — Scaffold (30 min)
 **Dependencies:** none
 
-- [ ] Create monorepo root with `package.json` (npm workspaces: `apps/web`, `apps/api`)
-- [ ] Init `apps/web` with Vite + React 19 + TypeScript template
-- [ ] Init `apps/api` as a plain TypeScript Node project
-- [ ] Configure root-level `tsconfig.json` references
-- [ ] Add ESLint (flat config) with TypeScript rules — shared from root
-- [ ] Init Supabase project: `npx supabase init` (use `npx supabase` on all platforms; required on Windows)
-- [ ] Add `concurrently` to root devDependencies for `npm run dev`
-- [ ] Move `fullstack.md` to `docs/` (do not edit it)
-- [ ] Add a `.gitignore` file to keep `base/`, `chat/` and `docs/` folders in repo
-- [ ] Commit: `chore: scaffold monorepo`
+- [X] Create monorepo root with `package.json` (npm workspaces: `apps/web`, `apps/api`)
+- [X] Init `apps/web` with Vite + React 19 + TypeScript template
+- [X] Init `apps/api` as a plain TypeScript Node project
+- [X] Configure root-level `tsconfig.json` references
+- [X] Add ESLint (flat config) with TypeScript rules — shared from root
+- [X] Init Supabase project: `npx supabase init` (use `npx supabase` on all platforms; required on Windows)
+- [X] Add `concurrently` to root devDependencies for `npm run dev`
+- [X] Move `fullstack.md` to `docs/` (do not edit it)
+- [X] Add a `.gitignore` file to keep `base/`, `chat/` and `docs/` folders in repo
+- [X] Commit: `chore: scaffold monorepo`
 
 ---
 
 ## Phase 1 — Database & Auth (60 min)
 **Dependencies:** Phase 0
 
-- [ ] Write migration `0001_init.sql` (schema only — keep migrations split by concern):
+- [X] Write migration `0001_init.sql` (schema only — keep migrations split by concern):
   - `companies` (id, name, created_at)
   - `agents` (id, company_id, email, name — FK to auth.users)
   - `inspections` (id, company_id, agent_id, owner_name, address, date, status, construction_year, living_area, heating_type, hot_water_system, ventilation_type, insulation_context)
   - `levels` (id, inspection_id, label, fractional_index)
   - `spaces` (id, level_id, name, area, window_count, glazing_type, heating_presence, heating_type, ventilation_presence, ventilation_type, insulation_rating, fractional_index)
-- [ ] Write migration `0002_rls.sql` (separate file from init — policies only):
+- [X] Write migration `0002_rls.sql` (separate file from init — policies only):
   - Enable RLS on `inspections`, `levels`, `spaces`
   - Policy: agent can read/write rows where `company_id` matches their own (resolved via `agents` join on `auth.uid()`)
-- [ ] Add further migrations as **new numbered files** when the schema changes (do not keep stuffing unrelated changes into `0001` after it has been used)
-- [ ] `npx supabase start` → verify Studio loads
-- [ ] `npx supabase db reset` → apply migrations
-- [ ] Add `supabase/seed.js` plus `supabase/seed/`: **`auth.js` first** (Admin API user), then one module per table using `await supabase.from('…').insert(…)` (e.g. `companies.js`, `agents.js`) in FK order
-- [ ] `npm run db:seed` → verify seeded user can log in via Studio Auth tab
-- [ ] `npm run db:types` → generate `database.types.ts` at repo root
-- [ ] Commit: `feat: database schema, RLS, and seed scripts`
+- [X] Add further migrations as **new numbered files** when the schema changes (do not keep stuffing unrelated changes into `0001` after it has been used)
+- [X] `npx supabase start` → verify Studio loads
+- [X] `npx supabase db reset` → apply migrations
+- [X] Add `supabase/seed.js` plus `supabase/seed/`: **`auth.js` first** (Admin API user), then one module per table using `await supabase.from('…').insert(…)` (e.g. `companies.js`, `agents.js`) in FK order
+- [X] `npm run db:seed` → verify seeded user can log in via Studio Auth tab
+- [X] `npm run db:types` → generate `database.types.ts` at repo root
+- [X] Commit: `feat: database schema, RLS, and seed scripts`
 
 ---
 
 ## Phase 2 — Hono API (75 min)
 **Dependencies:** Phase 1
 
-- [ ] Add Hono, `@supabase/supabase-js`, `dotenv` to `apps/api`
-- [ ] Create server entry `apps/api/src/index.ts` (Hono app, port from env)
-- [ ] JWT middleware: validate `Authorization: Bearer <token>` using `SUPABASE_JWT_SECRET`, attach `{ userId, companyId }` to context
-- [ ] Resource routers (each in its own file):
+- [X] Add Hono, `@supabase/supabase-js`, `dotenv` to `apps/api`
+- [X] Create server entry `apps/api/src/index.ts` (Hono app, port from env)
+- [X] JWT middleware: validate `Authorization: Bearer <token>` using `SUPABASE_JWT_SECRET`, attach `{ userId, companyId }` to context
+- [X] Resource routers (each in its own file):
   - `GET /inspections` — list by company
   - `POST /inspections` — create
   - `GET /inspections/:id` — single (with levels + spaces)
@@ -61,30 +61,30 @@ One-day build with AI assistance. Each phase lists concrete tasks and its depend
   - `PATCH /spaces/:id` — update fields or reorder or move level
   - `DELETE /spaces/:id`
   - `POST /voice` — accept audio blob + context, call Whisper + GPT, apply changes, return diff
-- [ ] Wire all routers into the main app with JWT middleware applied globally
-- [ ] Manual smoke test with curl or Bruno/Postman
-- [ ] Commit: `feat: Hono REST API with JWT middleware`
+- [X] Wire all routers into the main app with JWT middleware applied globally
+- [X] Manual smoke test with curl or Bruno/Postman
+- [X] Commit: `feat: Hono REST API with JWT middleware`
 
 ---
 
 ## Phase 3 — Frontend Foundation (60 min)
 **Dependencies:** Phase 0 (Phase 2 running helps but not strictly required)
 
-- [ ] Install and configure Tailwind CSS v4 in `apps/web`
-- [ ] Install and init shadcn/ui; apply Auditoo token palette from `base/scraped.css` to `globals.css`
-- [ ] Install lucide-react
-- [ ] Install and configure TanStack Router; define route tree:
+- [X] Install and configure Tailwind CSS v4 in `apps/web`
+- [X] Install and init shadcn/ui; apply Auditoo token palette from `base/scraped.css` to `globals.css`
+- [X] Install lucide-react
+- [X] Install and configure TanStack Router; define route tree:
   - `/login`
   - `/inspections` (list)
   - `/inspections/new`
   - `/inspections/:id/edit`
   - `/inspections/:id` (levels & spaces)
   - `/inspections/:id/spaces/:spaceId`
-- [ ] Auth context: store JWT in memory + localStorage; expose `useAuth()` hook
-- [ ] Protected route wrapper: redirect to `/login` if no token
-- [ ] Serwist: add service worker config (cache app shell, skip API caching)
-- [ ] API client utility (`apps/web/src/lib/api.ts`): thin wrapper over `fetch` that injects Bearer token and base URL
-- [ ] Commit: `feat: frontend scaffold, routing, auth context, PWA`
+- [X] Auth context: store JWT in memory + localStorage; expose `useAuth()` hook
+- [X] Protected route wrapper: redirect to `/login` if no token
+- [X] Serwist: add service worker config (cache app shell, skip API caching)
+- [X] API client utility (`apps/web/src/lib/api.ts`): thin wrapper over `fetch` that injects Bearer token and base URL
+- [X] Commit: `feat: frontend scaffold, routing, auth context, PWA`
 
 ---
 
@@ -92,61 +92,61 @@ One-day build with AI assistance. Each phase lists concrete tasks and its depend
 **Dependencies:** Phases 2 and 3
 
 ### Login (15 min)
-- [ ] Email + password form using shadcn `Input` + `Button`
-- [ ] Call Supabase Auth sign-in endpoint via API proxy
-- [ ] Store JWT, redirect to inspection list
+- [X] Email + password form using shadcn `Input` + `Button`
+- [X] Call Supabase Auth sign-in endpoint via API proxy
+- [X] Store JWT, redirect to inspection list
 
 ### Inspection List (20 min)
-- [ ] Fetch `GET /inspections` on mount
-- [ ] Card per inspection: owner name, address, date, status badge
-- [ ] "New Inspection" button → `/inspections/new`
-- [ ] Tap card → `/inspections/:id`
+- [X] Fetch `GET /inspections` on mount
+- [X] Card per inspection: owner name, address, date, status badge
+- [X] "New Inspection" button → `/inspections/new`
+- [X] Tap card → `/inspections/:id`
 
 ### New / Edit Inspection Form (25 min)
-- [ ] Form with all fields from PRD (text, number, date, selects)
-- [ ] `POST /inspections` on create, `PATCH /inspections/:id` on edit
-- [ ] Status toggle (draft / completed)
-- [ ] Back navigation
+- [X] Form with all fields from PRD (text, number, date, selects)
+- [X] `POST /inspections` on create, `PATCH /inspections/:id` on edit
+- [X] Status toggle (draft / completed)
+- [X] Back navigation
 
 ### Levels & Spaces Screen (60 min) ← most complex
-- [ ] Fetch `GET /inspections/:id` (with levels + spaces nested)
-- [ ] Render hierarchical list: level header rows + space rows beneath
-- [ ] dnd-kit: `DndContext` + `SortableContext` per level for space drag; outer `SortableContext` for level drag
-- [ ] Cross-level drag: detect when a space is dropped onto a different level header → `PATCH /spaces/:id { levelId }`
-- [ ] Inline add level: press "Add level" → inline text input → confirm → `POST /levels`
-- [ ] Inline add space: press "+" under a level → inline text input → confirm → `POST /spaces`
-- [ ] Inline rename: tap name → editable input → blur → `PATCH`
-- [ ] Swipe-to-delete: custom touch handler or `@use-gesture/react` → slide left → delete button → `DELETE`
-- [ ] Offline indicator bar (top): Offline / Syncing / Synced
-- [ ] Voice bar (bottom): mic button (see Phase 6)
+- [X] Fetch `GET /inspections/:id` (with levels + spaces nested)
+- [X] Render hierarchical list: level header rows + space rows beneath
+- [X] dnd-kit: `DndContext` + `SortableContext` per level for space drag; outer `SortableContext` for level drag
+- [X] Cross-level drag: detect when a space is dropped onto a different level header → `PATCH /spaces/:id { levelId }`
+- [X] Inline add level: press "Add level" → inline text input → confirm → `POST /levels`
+- [X] Inline add space: press "+" under a level → inline text input → confirm → `POST /spaces`
+- [X] Inline rename: tap name → editable input → blur → `PATCH`
+- [X] Swipe-to-delete: custom touch handler or `@use-gesture/react` → slide left → delete button → `DELETE`
+- [X] Offline indicator bar (top): Offline / Syncing / Synced
+- [X] Voice bar (bottom): mic button (see Phase 6)
 
 ### Space Detail Screen (30 min)
-- [ ] Single scrollable form
-- [ ] Conditional field reveal: `heatingPresence` toggle shows `heatingType`; same for ventilation
-- [ ] Auto-save on blur (debounced `PATCH /spaces/:id`)
-- [ ] Back button to levels/spaces screen
-- [ ] Voice bar at bottom (see Phase 6)
+- [X] Single scrollable form
+- [X] Conditional field reveal: `heatingPresence` toggle shows `heatingType`; same for ventilation
+- [X] Auto-save on blur (debounced `PATCH /spaces/:id`)
+- [X] Back button to levels/spaces screen
+- [X] Voice bar at bottom (see Phase 6)
 
-- [ ] Commit: `feat: all core screens`
+- [X] Commit: `feat: all core screens`
 
 ---
 
 ## Phase 5 — Offline Sync (75 min)
 **Dependencies:** Phase 4
 
-- [ ] Install `idb` (IndexedDB wrapper)
-- [ ] Design queue schema: `{ id, endpoint, method, body, timestamp }`
-- [ ] `MutationQueue` class:
+- [X] Install `idb` (IndexedDB wrapper)
+- [X] Design queue schema: `{ id, endpoint, method, body, timestamp }`
+- [X] `MutationQueue` class:
   - `enqueue(mutation)` — write to IndexedDB
   - `flush()` — drain queue in order, POST each mutation to API, remove on success
   - `getStatus()` — returns queue length
-- [ ] Intercept all API calls in `apps/web/src/lib/api.ts`: if `!navigator.onLine`, write to queue instead of fetching
-- [ ] Sync manager: listen to `window.online` event → call `MutationQueue.flush()`
-- [ ] Periodic health check (every 30 s) as fallback for `navigator.onLine` false positives
-- [ ] Offline indicator component: reads queue status + online state → renders "Offline", "Syncing (N)", or "Synced" badge
-- [ ] Register in Serwist: service worker intercepts navigation requests; API calls pass through (network-first for API, cache-first for app shell)
-- [ ] Test offline flow manually: DevTools → Network → Offline → make changes → back Online → verify sync
-- [ ] Commit: `feat: IndexedDB mutation queue and offline sync`
+- [X] Intercept all API calls in `apps/web/src/lib/api.ts`: if `!navigator.onLine`, write to queue instead of fetching
+- [X] Sync manager: listen to `window.online` event → call `MutationQueue.flush()`
+- [X] Periodic health check (every 30 s) as fallback for `navigator.onLine` false positives
+- [X] Offline indicator component: reads queue status + online state → renders "Offline", "Syncing (N)", or "Synced" badge
+- [X] Register in Serwist: service worker intercepts navigation requests; API calls pass through (network-first for API, cache-first for app shell)
+- [X] Test offline flow manually: DevTools → Network → Offline → make changes → back Online → verify sync
+- [X] Commit: `feat: IndexedDB mutation queue and offline sync`
 
 ---
 

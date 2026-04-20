@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { format, parse } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useVoiceHighlights } from '@/hooks/use-voice-highlights'
 import type { Inspection } from '@/lib/api-types'
 
 const HEATING_TYPES = [
@@ -28,15 +29,23 @@ const HOT_WATER_SYSTEMS = [
 ]
 const VENTILATION_TYPES = ['VMC simple flux', 'VMC double flux', 'Ventilation naturelle', 'Autre']
 
+/** Debounced autosave interval (ms); matches space detail pattern — `setTimeout` in a ref (React-friendly, no extra deps). */
+const AUTOSAVE_DEBOUNCE_MS = 400
+
 interface InspectionFormProps {
   inspection?: Inspection
-  onSubmit: (fields: Partial<Inspection>) => Promise<void>
-  isLoading: boolean
+  /** Required when creating an inspection (`!inspection?.id`). */
+  onSubmit?: (fields: Partial<Inspection>) => Promise<void>
+  /** Required when editing (`inspection.id`); debounced PATCH from field changes. */
+  onAutosave?: (fields: Partial<Inspection>) => Promise<void>
+  /** Shown only for the create flow submit button. */
+  isLoading?: boolean
   backTo: string
 }
 
-export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: InspectionFormProps) {
+export function InspectionForm({ inspection, onSubmit, onAutosave, isLoading = false, backTo }: InspectionFormProps) {
   const navigate = useNavigate()
+  const vh = useVoiceHighlights(inspection?.id ?? '')
   const [fields, setFields] = useState({
     owner_name: inspection?.owner_name ?? '',
     address: inspection?.address ?? '',
@@ -52,6 +61,98 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
   const [error, setError] = useState<string | null>(null)
   const [dateOpen, setDateOpen] = useState(false)
 
+  const isEdit = Boolean(inspection?.id)
+  const isEditRef = useRef(isEdit)
+  isEditRef.current = isEdit
+  const fieldsRef = useRef(fields)
+  fieldsRef.current = fields
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSentPayloadKeyRef = useRef<string | null>(null)
+  const onAutosaveRef = useRef(onAutosave)
+  onAutosaveRef.current = onAutosave
+  const inspectionRef = useRef(inspection)
+  inspectionRef.current = inspection
+
+  const buildPayload = useCallback((f: typeof fields): Partial<Inspection> => ({
+    owner_name: f.owner_name || null,
+    address: f.address || null,
+    date: f.date || null,
+    status: f.status,
+    construction_year: f.construction_year ? Number(f.construction_year) : null,
+    living_area: f.living_area ? Number(f.living_area) : null,
+    heating_type: f.heating_type || null,
+    hot_water_system: f.hot_water_system || null,
+    ventilation_type: f.ventilation_type || null,
+    insulation_context: f.insulation_context || null,
+  }), [])
+
+  const flushPersist = useCallback(async () => {
+    if (!isEdit || !onAutosaveRef.current) return
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current)
+      persistTimerRef.current = null
+    }
+    const payload = buildPayload(fieldsRef.current)
+    const key = JSON.stringify(payload)
+    if (key === lastSentPayloadKeyRef.current) return
+    try {
+      await onAutosaveRef.current(payload)
+      lastSentPayloadKeyRef.current = key
+      setError(null)
+    } catch {
+      setError('Une erreur est survenue. Veuillez réessayer.')
+    }
+  }, [buildPayload, isEdit])
+
+  const schedulePersist = useCallback(() => {
+    if (!isEdit) return
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
+    persistTimerRef.current = setTimeout(() => {
+      persistTimerRef.current = null
+      void flushPersist()
+    }, AUTOSAVE_DEBOUNCE_MS)
+  }, [flushPersist, isEdit])
+
+  // Reset local fields when navigating to another inspection (`id` only in deps — avoids wiping edits when the parent passes a new object reference).
+  useEffect(() => {
+    const insp = inspectionRef.current
+    if (!insp?.id) {
+      lastSentPayloadKeyRef.current = null
+      return
+    }
+    const initial = {
+      owner_name: insp.owner_name ?? '',
+      address: insp.address ?? '',
+      date: insp.date ?? '',
+      status: insp.status ?? 'draft',
+      construction_year: insp.construction_year?.toString() ?? '',
+      living_area: insp.living_area?.toString() ?? '',
+      heating_type: insp.heating_type ?? '',
+      hot_water_system: insp.hot_water_system ?? '',
+      ventilation_type: insp.ventilation_type ?? '',
+      insulation_context: insp.insulation_context ?? '',
+    }
+    setFields(initial)
+    fieldsRef.current = initial
+    lastSentPayloadKeyRef.current = JSON.stringify(buildPayload(initial))
+  }, [buildPayload, inspection?.id])
+
+  // Flush pending debounced edits only on real unmount (see React `useEffect` cleanup docs).
+  useEffect(() => {
+    return () => {
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current)
+        persistTimerRef.current = null
+      }
+      if (!isEditRef.current || !onAutosaveRef.current) return
+      const payload = buildPayload(fieldsRef.current)
+      const key = JSON.stringify(payload)
+      if (key !== lastSentPayloadKeyRef.current) {
+        void onAutosaveRef.current(payload).catch(() => {})
+      }
+    }
+  }, [buildPayload])
+
   const validInspectionDate = (() => {
     if (!fields.date) return undefined
     const d = parse(fields.date, 'yyyy-MM-dd', new Date())
@@ -59,25 +160,29 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
   })()
 
   function set(key: string, value: string) {
-    setFields((f) => ({ ...f, [key]: value }))
+    setFields((f) => {
+      const next = { ...f, [key]: value }
+      fieldsRef.current = next
+      return next
+    })
+    if (isEdit) schedulePersist()
+  }
+
+  function setDiscrete(key: string, value: string) {
+    setFields((f) => {
+      const next = { ...f, [key]: value }
+      fieldsRef.current = next
+      return next
+    })
+    if (isEdit) queueMicrotask(() => void flushPersist())
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (isEdit || !onSubmit) return
     setError(null)
     try {
-      await onSubmit({
-        owner_name: fields.owner_name || null,
-        address: fields.address || null,
-        date: fields.date || null,
-        status: fields.status,
-        construction_year: fields.construction_year ? Number(fields.construction_year) : null,
-        living_area: fields.living_area ? Number(fields.living_area) : null,
-        heating_type: fields.heating_type || null,
-        hot_water_system: fields.hot_water_system || null,
-        ventilation_type: fields.ventilation_type || null,
-        insulation_context: fields.insulation_context || null,
-      })
+      await onSubmit(buildPayload(fields))
     } catch {
       setError('Une erreur est survenue. Veuillez réessayer.')
     }
@@ -99,13 +204,20 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
       </header>
 
       <form onSubmit={handleSubmit} className="p-4 space-y-5 max-w-lg mx-auto pb-10" data-testid="inspection-form">
+        {isEdit && (
+          <p className="text-xs text-muted-foreground" data-testid="inspection-autosave-hint">
+            Enregistrement automatique après {AUTOSAVE_DEBOUNCE_MS / 1000} s sans modification.
+          </p>
+        )}
         <div className="space-y-2">
           <Label htmlFor="owner_name">Nom du propriétaire</Label>
           <Input
             id="owner_name"
             data-testid="inspection-owner-name"
             value={fields.owner_name}
+            className={cn(inspection?.id && vh.ringClass(vh.fieldTone('inspections', inspection.id, 'owner_name')))}
             onChange={(e) => set('owner_name', e.target.value)}
+            onFocus={() => inspection?.id && vh.consumeField('inspections', inspection.id, 'owner_name')}
             placeholder="Jean Dupont"
           />
         </div>
@@ -115,7 +227,9 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
           <Input
             id="address"
             value={fields.address}
+            className={cn(inspection?.id && vh.ringClass(vh.fieldTone('inspections', inspection.id, 'address')))}
             onChange={(e) => set('address', e.target.value)}
+            onFocus={() => inspection?.id && vh.consumeField('inspections', inspection.id, 'address')}
             placeholder="12 rue de la Paix, 75001 Paris"
           />
         </div>
@@ -130,8 +244,10 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
                 variant="outline"
                 className={cn(
                   'w-full justify-start text-left font-normal',
-                  !validInspectionDate && 'text-muted-foreground'
+                  !validInspectionDate && 'text-muted-foreground',
+                  inspection?.id && vh.ringClass(vh.fieldTone('inspections', inspection.id, 'date')),
                 )}
+                onPointerDown={() => inspection?.id && vh.consumeField('inspections', inspection.id, 'date')}
               >
                 <CalendarIcon className="mr-2 size-4" />
                 {validInspectionDate
@@ -145,8 +261,14 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
                 locale={fr}
                 selected={validInspectionDate}
                 onSelect={(d) => {
-                  set('date', d ? format(d, 'yyyy-MM-dd') : '')
+                  const next = d ? format(d, 'yyyy-MM-dd') : ''
+                  setFields((f) => {
+                    const merged = { ...f, date: next }
+                    fieldsRef.current = merged
+                    return merged
+                  })
                   setDateOpen(false)
+                  if (isEdit) queueMicrotask(() => void flushPersist())
                 }}
                 initialFocus
               />
@@ -156,8 +278,11 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
 
         <div className="space-y-2">
           <Label>Statut</Label>
-          <Select value={fields.status} onValueChange={(v) => set('status', v)}>
-            <SelectTrigger>
+          <Select value={fields.status} onValueChange={(v) => setDiscrete('status', v)}>
+            <SelectTrigger
+              className={cn(inspection?.id && vh.ringClass(vh.fieldTone('inspections', inspection.id, 'status')))}
+              onPointerDown={() => inspection?.id && vh.consumeField('inspections', inspection.id, 'status')}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -176,7 +301,9 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
               min={1800}
               max={new Date().getFullYear()}
               value={fields.construction_year}
+              className={cn(inspection?.id && vh.ringClass(vh.fieldTone('inspections', inspection.id, 'construction_year')))}
               onChange={(e) => set('construction_year', e.target.value)}
+              onFocus={() => inspection?.id && vh.consumeField('inspections', inspection.id, 'construction_year')}
               placeholder="1985"
             />
           </div>
@@ -188,7 +315,9 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
               min={0}
               step={0.1}
               value={fields.living_area}
+              className={cn(inspection?.id && vh.ringClass(vh.fieldTone('inspections', inspection.id, 'living_area')))}
               onChange={(e) => set('living_area', e.target.value)}
+              onFocus={() => inspection?.id && vh.consumeField('inspections', inspection.id, 'living_area')}
               placeholder="95"
             />
           </div>
@@ -196,8 +325,11 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
 
         <div className="space-y-2">
           <Label>Système de chauffage</Label>
-          <Select value={fields.heating_type} onValueChange={(v) => set('heating_type', v)}>
-            <SelectTrigger>
+          <Select value={fields.heating_type} onValueChange={(v) => setDiscrete('heating_type', v)}>
+            <SelectTrigger
+              className={cn(inspection?.id && vh.ringClass(vh.fieldTone('inspections', inspection.id, 'heating_type')))}
+              onPointerDown={() => inspection?.id && vh.consumeField('inspections', inspection.id, 'heating_type')}
+            >
               <SelectValue placeholder="Sélectionner…" />
             </SelectTrigger>
             <SelectContent>
@@ -208,8 +340,11 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
 
         <div className="space-y-2">
           <Label>Eau chaude sanitaire</Label>
-          <Select value={fields.hot_water_system} onValueChange={(v) => set('hot_water_system', v)}>
-            <SelectTrigger>
+          <Select value={fields.hot_water_system} onValueChange={(v) => setDiscrete('hot_water_system', v)}>
+            <SelectTrigger
+              className={cn(inspection?.id && vh.ringClass(vh.fieldTone('inspections', inspection.id, 'hot_water_system')))}
+              onPointerDown={() => inspection?.id && vh.consumeField('inspections', inspection.id, 'hot_water_system')}
+            >
               <SelectValue placeholder="Sélectionner…" />
             </SelectTrigger>
             <SelectContent>
@@ -220,8 +355,11 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
 
         <div className="space-y-2">
           <Label>Ventilation</Label>
-          <Select value={fields.ventilation_type} onValueChange={(v) => set('ventilation_type', v)}>
-            <SelectTrigger>
+          <Select value={fields.ventilation_type} onValueChange={(v) => setDiscrete('ventilation_type', v)}>
+            <SelectTrigger
+              className={cn(inspection?.id && vh.ringClass(vh.fieldTone('inspections', inspection.id, 'ventilation_type')))}
+              onPointerDown={() => inspection?.id && vh.consumeField('inspections', inspection.id, 'ventilation_type')}
+            >
               <SelectValue placeholder="Sélectionner…" />
             </SelectTrigger>
             <SelectContent>
@@ -235,16 +373,20 @@ export function InspectionForm({ inspection, onSubmit, isLoading, backTo }: Insp
           <Input
             id="insulation_context"
             value={fields.insulation_context}
+            className={cn(inspection?.id && vh.ringClass(vh.fieldTone('inspections', inspection.id, 'insulation_context')))}
             onChange={(e) => set('insulation_context', e.target.value)}
+            onFocus={() => inspection?.id && vh.consumeField('inspections', inspection.id, 'insulation_context')}
             placeholder="Notes sur l'isolation…"
           />
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <Button type="submit" className="w-full min-h-11" disabled={isLoading} data-testid="inspection-submit">
-          {isLoading ? 'Enregistrement…' : inspection ? 'Enregistrer les modifications' : 'Créer l\'inspection'}
-        </Button>
+        {!isEdit && (
+          <Button type="submit" className="w-full min-h-11" disabled={isLoading} data-testid="inspection-submit">
+            {isLoading ? 'Enregistrement…' : 'Créer l\'inspection'}
+          </Button>
+        )}
       </form>
     </div>
   )

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, Loader2, Mic, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api, type PostVoiceResult } from '@/lib/api'
+import { recordVoiceHighlights } from '@/lib/voice-highlights'
 
 type BarPhase = 'idle' | 'recording' | 'processing' | 'queued' | 'done' | 'error'
 
@@ -81,6 +82,9 @@ export function VoiceBar({ inspectionId, spaceId, onComplete }: VoiceBarProps) {
           setPhase('processing')
           try {
             const result = await api.postVoice(blob, inspectionId, spaceId)
+            if (result.status === 'applied') {
+              recordVoiceHighlights(inspectionId, result)
+            }
             onComplete?.(result)
             if (result.status === 'queued') {
               setPhase('queued')
@@ -126,7 +130,7 @@ export function VoiceBar({ inspectionId, spaceId, onComplete }: VoiceBarProps) {
                 : null
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-20 bg-background/95 backdrop-blur border-t border-border px-4 py-3 flex flex-col items-center gap-2">
+    <div className="fixed bottom-0 left-0 right-0 z-20 bg-background/95 backdrop-blur border-t border-border px-4 py-3 flex flex-col items-center gap-2 shadow-[0_-2px_12px_rgba(0,0,0,0.07)]">
       <div className="flex items-center justify-center gap-3 w-full max-w-md">
         {phase === 'recording' ? (
           <>
@@ -154,8 +158,8 @@ export function VoiceBar({ inspectionId, spaceId, onComplete }: VoiceBarProps) {
             <Button
               type="button"
               size="icon"
-              variant="outline"
-              className="rounded-full w-12 h-12 shrink-0"
+              variant="default"
+              className="rounded-full w-12 h-12 shrink-0 shadow-md"
               disabled={phase === 'processing' || phase === 'queued' || phase === 'done'}
               onClick={phase === 'error' ? dismissError : startRecording}
               aria-label={

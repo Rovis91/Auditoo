@@ -116,6 +116,11 @@ export async function setCachedResponse(url: string, data: unknown): Promise<voi
   await db.put(RESPONSES, { url, data, timestamp: Date.now() })
 }
 
+export async function deleteCachedResponse(url: string): Promise<void> {
+  const db = await getDb()
+  await db.delete(RESPONSES, url)
+}
+
 /** Offline mutation queue (IndexedDB). `flush` lives in `@/lib/sync`. */
 export const mutationQueue = {
   enqueue,

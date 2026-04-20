@@ -1,22 +1,28 @@
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const SEED_EMAIL = 'agent@exemple.com'
 
-export async function seedAuth() {
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify({
-      email: 'agent@exemple.com',
-      password: 'motdepasse',
-      email_confirm: true,
-    }),
+export async function seedAuth(supabase) {
+  let page = 1
+  const perPage = 200
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage })
+    if (error) throw new Error(`Auth list users failed: ${error.message}`)
+    const found = data.users.find(
+      (u) => u.email?.toLowerCase() === SEED_EMAIL.toLowerCase(),
+    )
+    if (found) {
+      console.log('  auth user exists:', found.id)
+      return found.id
+    }
+    if (data.users.length < perPage) break
+    page++
+  }
+
+  const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+    email: SEED_EMAIL,
+    password: 'motdepasse',
+    email_confirm: true,
   })
-  if (!res.ok) throw new Error(`Auth seed failed: ${res.status} ${await res.text()}`)
-  const user = await res.json()
-  console.log('  auth user created:', user.id)
-  return user.id
+  if (createErr) throw new Error(`Auth seed failed: ${createErr.message}`)
+  console.log('  auth user created:', created.user.id)
+  return created.user.id
 }

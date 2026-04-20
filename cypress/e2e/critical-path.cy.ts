@@ -35,19 +35,8 @@ describe('critical path', () => {
 
     cy.contains('[data-testid="space-name"]', 'Espace A', { timeout: 15000 }).should('be.visible')
 
-    cy.contains('[data-testid="space-name"]', 'Espace A')
-      .closest('[data-testid="space-row"]')
-      .within(() => {
-        cy.get('[data-testid="space-rename"]').click()
-      })
-
-    cy.get('[data-testid="space-name-input"]').clear().type('Espace B')
-    cy.get('[data-testid="space-name-input"]').blur()
-
-    cy.contains('[data-testid="space-name"]', 'Espace B', { timeout: 10000 }).should('be.visible')
-
-    // Open space detail and fill every field
-    cy.contains('[data-testid="space-name"]', 'Espace B').click()
+    // Open space detail and fill every field (rename happens on the detail screen)
+    cy.contains('[data-testid="space-name"]', 'Espace A').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/inspections\/[^/]+\/spaces\/[^/]+/)
 
     cy.get('[data-testid="space-detail-name"]', { timeout: 10000 }).should('be.visible')

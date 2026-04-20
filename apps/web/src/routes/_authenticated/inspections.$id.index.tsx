@@ -17,14 +17,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useDrag } from '@use-gesture/react'
 import { generateKeyBetween } from 'fractional-indexing'
-import { ChevronLeft, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react'
+import { EntityCard } from '@/components/entity-card'
+import { SwipeDeleteRow } from '@/components/swipe-delete-row'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { OfflineBar } from '@/components/offline-bar'
 import { VoiceBar } from '@/components/voice-bar'
+import { useVoiceHighlights } from '@/hooks/use-voice-highlights'
 import { api } from '@/lib/api'
 import { VOICE_SYNCED_EVENT } from '@/lib/sync'
 import type { InspectionWithLevels, Level, LevelWithSpaces, Space } from '@/lib/api-types'
@@ -43,94 +45,35 @@ function keyAfter(arr: { fractional_index: string }[]): string {
 }
 
 // ─────────────────────────────────────────────
-// Swipeable row (for spaces)
-// ─────────────────────────────────────────────
-
-interface SwipeRowProps {
-  onDelete: () => void
-  children: React.ReactNode
-}
-
-function SwipeRow({ onDelete, children }: SwipeRowProps) {
-  const [dx, setDx] = useState(0)
-  const THRESHOLD = -72
-
-  const bind = useDrag(
-    ({ movement: [mx], last, cancel }) => {
-      if (mx > 0) { cancel(); return }
-      setDx(last ? (mx < THRESHOLD ? THRESHOLD : 0) : Math.max(mx, THRESHOLD))
-    },
-    { axis: 'x', filterTaps: true }
-  )
-
-  return (
-    <div className="relative overflow-hidden rounded-lg" data-testid="swipe-row">
-      <div className="absolute inset-y-0 right-0 flex items-stretch bg-destructive rounded-lg">
-        <Button
-          type="button"
-          variant="destructive"
-          size="iconTouch"
-          className="h-auto min-h-11 shrink-0 rounded-lg rounded-l-none px-4"
-          onClick={onDelete}
-          aria-label="Supprimer"
-          data-testid="space-swipe-delete"
-        >
-          <Trash2 className="w-5 h-5" />
-        </Button>
-      </div>
-      <div
-        {...bind()}
-        style={{ transform: `translateX(${dx}px)`, touchAction: 'pan-y' }}
-        className="relative bg-card transition-transform duration-150"
-      >
-        {children}
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────
 // Sortable space row
 // ─────────────────────────────────────────────
 
 interface SpaceRowProps {
   space: Space
-  inspectionId: string
   onDelete: () => void
-  onRename: (name: string) => void
+  voiceRowClassName?: string
+  /** Nombre de champs « nouveaux » (vert) — badge à côté du nom */
+  voiceChangeBadgeCount?: number
+  onNavigateSpace: () => void
 }
 
-function SpaceRow({ space, inspectionId, onDelete, onRename }: SpaceRowProps) {
-  const navigate = useNavigate()
+function SpaceRow({ space, onDelete, voiceRowClassName, voiceChangeBadgeCount = 0, onNavigateSpace }: SpaceRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: space.id, data: { type: 'space', levelId: space.level_id } })
-
-  const [editing, setEditing] = useState(false)
-  const [name, setName] = useState(space.name)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  function startEdit(e: React.MouseEvent) {
-    e.stopPropagation()
-    setEditing(true)
-    setTimeout(() => inputRef.current?.focus(), 0)
-  }
-
-  function commitRename() {
-    setEditing(false)
-    if (name.trim() && name !== space.name) onRename(name.trim())
-    else setName(space.name)
-  }
 
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
   return (
-    <SwipeRow onDelete={onDelete}>
-      <div
+    <SwipeDeleteRow onDelete={onDelete}>
+      <EntityCard
         ref={setNodeRef}
         style={style}
         data-testid="space-row"
         data-space-id={space.id}
-        className="flex items-center gap-2 px-3 py-2 min-h-11 border border-border rounded-lg bg-card"
+        className={cn(
+          'flex items-center gap-2 px-3 py-2 min-h-11 transition-[box-shadow,ring]',
+          voiceRowClassName,
+        )}
       >
         <button
           type="button"
@@ -146,40 +89,31 @@ function SpaceRow({ space, inspectionId, onDelete, onRename }: SpaceRowProps) {
           <GripVertical className="w-5 h-5" />
         </button>
 
-        {editing ? (
-          <input
-            ref={inputRef}
-            data-testid="space-name-input"
-            className="flex-1 text-sm bg-transparent outline-none border-b border-primary min-h-10"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={(e) => e.key === 'Enter' && commitRename()}
-          />
-        ) : (
-          <button
-            type="button"
-            className="flex-1 text-sm text-left text-card-foreground min-h-10"
-            data-testid="space-name"
-            onClick={() => navigate({ to: '/inspections/$id/spaces/$spaceId', params: { id: inspectionId, spaceId: space.id } })}
-          >
-            {space.name}
-          </button>
-        )}
-
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="iconTouch"
-          onClick={startEdit}
-          className="shrink-0 text-muted-foreground"
-          aria-label="Renommer l'espace"
-          data-testid="space-rename"
+          className="flex-1 min-w-0 text-sm text-left text-card-foreground min-h-10 flex items-center gap-2"
+          data-testid="space-name"
+          onClick={onNavigateSpace}
         >
-          <Pencil className="w-5 h-5" />
-        </Button>
-      </div>
-    </SwipeRow>
+          <span className="min-w-0 flex-1 truncate">{space.name}</span>
+          {voiceChangeBadgeCount > 0 ? (
+            <span
+              className="shrink-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold text-white tabular-nums shadow-sm"
+              aria-label={`${voiceChangeBadgeCount} champs mis à jour par la voix`}
+            >
+              {voiceChangeBadgeCount > 99 ? '99+' : voiceChangeBadgeCount}
+            </span>
+          ) : null}
+        </button>
+
+        <ChevronRight
+          className={cn(
+            'w-3.5 h-3.5 text-muted-foreground/40 shrink-0 pointer-events-none transition-transform duration-150 ease-out will-change-transform',
+            'rotate-[calc(var(--swipe-openness,0)*180deg)]',
+          )}
+        />
+      </EntityCard>
+    </SwipeDeleteRow>
   )
 }
 
@@ -189,17 +123,25 @@ function SpaceRow({ space, inspectionId, onDelete, onRename }: SpaceRowProps) {
 
 interface LevelSectionProps {
   level: LevelWithSpaces
-  inspectionId: string
   onDeleteLevel: () => void
   onRenameLevel: (label: string) => void
   onDeleteSpace: (spaceId: string) => void
-  onRenameSpace: (spaceId: string, name: string) => void
   onAddSpace: (levelId: string, name: string) => void
+  voiceLevelClassName?: string
+  voiceSpaceRowClassName: (spaceId: string) => string
+  voiceSpaceChangeBadgeCount: (spaceId: string) => number
+  onConsumeLevelRow: () => void
+  onNavigateToSpace: (spaceId: string) => void
 }
 
 function LevelSection({
-  level, inspectionId, onDeleteLevel, onRenameLevel,
-  onDeleteSpace, onRenameSpace, onAddSpace,
+  level, onDeleteLevel, onRenameLevel,
+  onDeleteSpace, onAddSpace,
+  voiceLevelClassName,
+  voiceSpaceRowClassName,
+  voiceSpaceChangeBadgeCount,
+  onConsumeLevelRow,
+  onNavigateToSpace,
 }: LevelSectionProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: level.id, data: { type: 'level', levelId: level.id } })
@@ -213,6 +155,7 @@ function LevelSection({
 
   function startEditLabel(e: React.MouseEvent) {
     e.stopPropagation()
+    onConsumeLevelRow()
     setEditingLabel(true)
     setTimeout(() => labelRef.current?.focus(), 0)
   }
@@ -241,9 +184,20 @@ function LevelSection({
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
 
   return (
-    <div ref={setNodeRef} style={style} className="space-y-1.5" data-testid="level-section" data-level-id={level.id}>
+    <EntityCard
+      ref={setNodeRef}
+      style={style}
+      className="p-0 overflow-x-visible"
+      data-testid="level-section"
+      data-level-id={level.id}
+    >
       {/* Level header */}
-      <div className="flex items-center gap-1 sm:gap-2 px-1 py-1 rounded-md bg-muted/60 min-h-11">
+      <div
+        className={cn(
+          'flex items-center gap-1 sm:gap-2 px-2 py-2 border-b border-border bg-muted/25 min-h-10 rounded-t-lg transition-[box-shadow,ring]',
+          voiceLevelClassName,
+        )}
+      >
         <button
           type="button"
           {...attributes}
@@ -255,21 +209,22 @@ function LevelSection({
           aria-label="Réordonner le niveau"
           data-testid="level-drag-handle"
         >
-          <GripVertical className="w-5 h-5" />
+          <GripVertical className="w-4 h-4" />
         </button>
 
         {editingLabel ? (
           <input
             ref={labelRef}
             data-testid="level-label-input"
-            className="flex-1 text-sm font-semibold bg-transparent outline-none border-b border-primary min-h-10"
+            className="flex-1 text-sm font-bold bg-transparent outline-none border-b border-primary min-h-10"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             onBlur={commitLabel}
+            onFocus={onConsumeLevelRow}
             onKeyDown={(e) => e.key === 'Enter' && commitLabel()}
           />
         ) : (
-          <span className="flex-1 text-sm font-semibold text-foreground min-h-10 flex items-center" data-testid="level-label">
+          <span className="flex-1 text-sm font-bold text-foreground min-h-10 flex items-center" data-testid="level-label">
             {level.label}
           </span>
         )}
@@ -283,7 +238,7 @@ function LevelSection({
           aria-label="Renommer le niveau"
           data-testid="level-rename"
         >
-          <Pencil className="w-5 h-5" />
+          <Pencil className="w-4 h-4" />
         </Button>
         <Button
           type="button"
@@ -294,7 +249,7 @@ function LevelSection({
           aria-label="Ajouter un espace"
           data-testid="level-add-space"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
         </Button>
         <Button
           type="button"
@@ -305,25 +260,29 @@ function LevelSection({
           aria-label="Supprimer le niveau"
           data-testid="level-delete"
         >
-          <Trash2 className="w-5 h-5" />
+          <Trash2 className="w-4 h-4" />
         </Button>
       </div>
 
       {/* Spaces within level */}
       <SortableContext items={spaceIds} strategy={verticalListSortingStrategy}>
-        <div className="pl-4 space-y-1.5">
+        <div className="p-2 space-y-2">
           {spaces.map((space) => (
             <SpaceRow
               key={space.id}
               space={space}
-              inspectionId={inspectionId}
               onDelete={() => onDeleteSpace(space.id)}
-              onRename={(name) => onRenameSpace(space.id, name)}
+              voiceRowClassName={voiceSpaceRowClassName(space.id)}
+              voiceChangeBadgeCount={voiceSpaceChangeBadgeCount(space.id)}
+              onNavigateSpace={() => onNavigateToSpace(space.id)}
             />
           ))}
 
           {addingSpace && (
-            <div className="flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-lg" data-testid="new-space-input-row">
+            <div
+              className="flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-md bg-muted/10"
+              data-testid="new-space-input-row"
+            >
               <Input
                 ref={spaceInputRef}
                 data-testid="new-space-name-input"
@@ -341,7 +300,7 @@ function LevelSection({
           )}
         </div>
       </SortableContext>
-    </div>
+    </EntityCard>
   )
 }
 
@@ -352,6 +311,7 @@ function LevelSection({
 function InspectionDetailPage() {
   const { id } = Route.useParams()
   const navigate = useNavigate()
+  const vh = useVoiceHighlights(id)
   const [inspection, setInspection] = useState<InspectionWithLevels | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -439,17 +399,6 @@ function InspectionDetailPage() {
       })),
     } : prev)
     await api.delete(`/spaces/${spaceId}`)
-  }
-
-  async function renameSpace(spaceId: string, name: string) {
-    await api.patch(`/spaces/${spaceId}`, { name })
-    setInspection((prev) => prev ? {
-      ...prev,
-      levels: prev.levels.map((l) => ({
-        ...l,
-        spaces: l.spaces.map((s) => s.id === spaceId ? { ...s, name } : s),
-      })),
-    } : prev)
   }
 
   // ── Drag and drop ─────────────────────────
@@ -569,7 +518,7 @@ function InspectionDetailPage() {
     <div className="min-h-screen bg-background pb-20">
       <OfflineBar />
 
-      <header className="sticky top-8 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3">
         <Button
           type="button"
           variant="ghost"
@@ -582,7 +531,7 @@ function InspectionDetailPage() {
           <ChevronLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-semibold truncate">{inspection.owner_name || 'Sans nom'}</h1>
+          <h1 className="text-base font-bold truncate">{inspection.owner_name || 'Sans nom'}</h1>
           <p className="text-xs text-muted-foreground truncate">{inspection.address || '—'}</p>
         </div>
         <Button
@@ -596,7 +545,7 @@ function InspectionDetailPage() {
         </Button>
       </header>
 
-      <main className="p-4 space-y-3" data-testid="levels-spaces-main">
+      <main className="p-4 space-y-3 max-w-2xl mx-auto w-full" data-testid="levels-spaces-main">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -608,19 +557,26 @@ function InspectionDetailPage() {
               <LevelSection
                 key={level.id}
                 level={level}
-                inspectionId={id}
                 onDeleteLevel={() => deleteLevel(level.id)}
                 onRenameLevel={(label) => renameLevel(level.id, label)}
                 onDeleteSpace={deleteSpace}
-                onRenameSpace={renameSpace}
                 onAddSpace={addSpace}
+                voiceLevelClassName={vh.ringClass(vh.levelRowTone(level.id), 'cardTop')}
+                voiceSpaceRowClassName={(sid) => vh.ringClass(vh.spaceRowTone(sid), 'card')}
+                voiceSpaceChangeBadgeCount={(sid) => {
+                  const t = vh.spaceRowTone(sid)
+                  return t === 'new' ? vh.spaceChangeBadgeCount(sid) : 0
+                }}
+                onConsumeLevelRow={() => vh.consumeLevelRow(level.id)}
+                onNavigateToSpace={(spaceId) =>
+                  navigate({ to: '/inspections/$id/spaces/$spaceId', params: { id, spaceId } })}
               />
             ))}
           </SortableContext>
 
           <DragOverlay>
             {activeId && (
-              <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg opacity-90 text-sm">
+              <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-xl opacity-95 text-sm font-medium">
                 En déplacement…
               </div>
             )}
@@ -649,7 +605,7 @@ function InspectionDetailPage() {
             type="button"
             onClick={handleAddLevel}
             data-testid="add-level"
-            className="w-full flex items-center justify-center gap-2 min-h-11 px-3 py-2.5 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            className="w-full flex items-center justify-center gap-2 min-h-11 px-3 py-2.5 border border-dashed border-primary/30 rounded-lg text-sm text-primary/60 hover:text-primary hover:border-primary/50 transition-colors"
           >
             <Plus className="w-5 h-5 shrink-0" />
             Ajouter un niveau
