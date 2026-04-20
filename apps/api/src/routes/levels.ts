@@ -1,15 +1,11 @@
 import { Hono } from 'hono'
 import type { TablesUpdate } from '../../../../database.types.js'
 import { supabase } from '../lib/supabase.js'
-import { pickAllowed } from '../lib/utils.js'
 import { z } from 'zod'
-import { LevelPostSchema } from '../lib/schemas.js'
+import { LevelPatchSchema, LevelPostSchema } from '../lib/schemas.js'
 import type { AppEnv } from '../types.js'
 
 export const levelsRouter = new Hono<AppEnv>()
-
-const PATCH_FIELDS = ['label', 'fractional_index'] as const satisfies
-  readonly (keyof TablesUpdate<'levels'>)[]
 
 /** Returns the level row if it exists and belongs to companyId, otherwise null. */
 async function fetchLevelForCompany(levelId: string, companyId: string) {
@@ -61,13 +57,20 @@ levelsRouter.post('/', async (c) => {
 levelsRouter.patch('/:id', async (c) => {
   const { companyId } = c.get('auth')
   const { id } = c.req.param()
-  const body = await c.req.json<Record<string, unknown>>()
+  let raw: unknown
+  try {
+    raw = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
+  const parsed = LevelPatchSchema.safeParse(raw)
+  if (!parsed.success) return c.json({ error: z.flattenError(parsed.error) }, 400)
 
   if (!(await fetchLevelForCompany(id, companyId))) {
     return c.json({ error: 'Not found' }, 404)
   }
 
-  const update = pickAllowed<TablesUpdate<'levels'>>(body, PATCH_FIELDS)
+  const update = parsed.data as TablesUpdate<'levels'>
   const { data, error } = await supabase
     .from('levels')
     .update(update)

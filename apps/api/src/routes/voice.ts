@@ -1,8 +1,18 @@
 import { Hono } from 'hono'
 import { generateKeyBetween } from 'fractional-indexing'
 import OpenAI from 'openai'
+import { z } from 'zod'
 import type { Tables, TablesInsert } from '../../../../database.types.js'
 import { supabase } from '../lib/supabase.js'
+import {
+  INSPECTION_VOICE_FIELDS as INSPECTION_FIELDS,
+  SPACE_VOICE_FIELDS as SPACE_FIELDS,
+} from '../lib/voice-constants.js'
+import {
+  VoiceParsedSchema,
+  type VoiceCreateSpaceInput,
+  type VoiceParsed,
+} from '../lib/voice-schemas.js'
 import type { AppEnv } from '../types.js'
 
 export const voiceRouter = new Hono<AppEnv>()
@@ -15,28 +25,10 @@ function getOpenAI(): OpenAI {
   return _openai
 }
 
-const INSPECTION_FIELDS: readonly (keyof Tables<'inspections'>)[] = [
-  'owner_name', 'address', 'date', 'status', 'construction_year',
-  'living_area', 'heating_type', 'hot_water_system', 'ventilation_type', 'insulation_context',
-]
-const SPACE_FIELDS: readonly (keyof Tables<'spaces'>)[] = [
-  'name', 'area', 'window_count', 'glazing_type', 'heating_presence',
-  'heating_type', 'ventilation_presence', 'ventilation_type', 'insulation_rating',
-]
-
 /** Applied field update (response only uses uuid ids). */
 type Change = {
   table: 'inspections' | 'spaces'
   id: string
-  field: string
-  value: unknown
-}
-
-/** Raw change from model — spaces may target an existing id OR a just-created row by index. */
-type RawChange = {
-  table: 'inspections' | 'spaces'
-  id?: string
-  newSpaceIndex?: number
   field: string
   value: unknown
 }
@@ -53,18 +45,6 @@ const SPACE_OPTIONAL_ON_CREATE = [
   'ventilation_type',
   'insulation_rating',
 ] as const satisfies readonly (keyof Tables<'spaces'>)[]
-
-type CreateSpaceInput = {
-  name: string
-  levelId?: string
-  newLevelIndex?: number
-} & Partial<Pick<Tables<'spaces'>, (typeof SPACE_OPTIONAL_ON_CREATE)[number]>>
-
-type ParsedVoice = {
-  changes?: RawChange[]
-  createLevels?: { label: string }[]
-  createSpaces?: CreateSpaceInput[]
-}
 
 function sortedLevels(levels: LevelWithSpaces[]): LevelWithSpaces[] {
   return [...levels].sort((a, b) =>
@@ -95,7 +75,7 @@ function buildSpaceInsertRow(
   resolvedLevelId: string,
   name: string,
   fractional_index: string,
-  ns: CreateSpaceInput,
+  ns: VoiceCreateSpaceInput,
 ): TablesInsert<'spaces'> {
   const row: TablesInsert<'spaces'> = {
     level_id: resolvedLevelId,
@@ -216,8 +196,8 @@ ${focusNote}
 Inspection et arborescence actuelles (JSON) :
 ${JSON.stringify(inspectionContext, null, 2)}
 
-Champs modifiables sur l'inspection (id = "${inspectionId}") : ${INSPECTION_FIELDS.join(', ')}
-Champs modifiables sur une pièce : ${SPACE_FIELDS.join(', ')}
+Champs modifiables sur l'inspection (id = "${inspectionId}") : ${[...INSPECTION_FIELDS].join(', ')}
+Champs modifiables sur une pièce : ${[...SPACE_FIELDS].join(', ')}
 
 IMPORTANT — ordre d'exécution côté serveur (tu dois structurer le JSON pour qu'il soit cohérent avec cet ordre) :
 1) createLevels — nouveaux étages
@@ -266,12 +246,17 @@ Règles :
     return c.json({ error: 'Structured extraction failed' }, 502)
   }
 
-  let parsed: ParsedVoice
+  let json: unknown
   try {
-    parsed = JSON.parse(completion.choices[0].message.content ?? '{}') as ParsedVoice
+    json = JSON.parse(completion.choices[0].message.content ?? '{}')
   } catch {
     return c.json({ error: 'Invalid model output' }, 502)
   }
+  const validated = VoiceParsedSchema.safeParse(json)
+  if (!validated.success) {
+    return c.json({ error: 'Invalid model output', detail: z.flattenError(validated.error) }, 422)
+  }
+  const parsed: VoiceParsed = validated.data
 
   const spaceIds = new Set(allSpaces.map((s) => s.id))
   const applied: Change[] = []
@@ -366,7 +351,7 @@ Règles :
     }
 
     const allowed: readonly string[] =
-      raw.table === 'spaces' ? SPACE_FIELDS : INSPECTION_FIELDS
+      raw.table === 'spaces' ? [...SPACE_FIELDS] : [...INSPECTION_FIELDS]
     if (!allowed.includes(raw.field as never)) continue
 
     const change: Change = {

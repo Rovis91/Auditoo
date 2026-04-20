@@ -4,7 +4,7 @@
 
 | Tool | Version | Notes |
 |---|---|---|
-| Node.js | 18+ | Use `node -v` to check |
+| Node.js | 22 | Use `node -v` to check |
 | npm | 9+ | Comes with Node |
 | Docker Desktop | Latest | Must be running before `npx supabase start` |
 | Supabase CLI | Latest | Prefer **`npx supabase`** (works everywhere). **On Windows, use `npx supabase` for all CLI commands** — do not rely on a global install. Optional: `npm install -g supabase` or [official install](https://supabase.com/docs/guides/cli) on macOS/Linux |

@@ -1,17 +1,11 @@
 import { Hono } from 'hono'
 import type { TablesUpdate } from '../../../../database.types.js'
 import { supabase } from '../lib/supabase.js'
-import { pickAllowed } from '../lib/utils.js'
 import { z } from 'zod'
-import { InspectionPostSchema } from '../lib/schemas.js'
+import { InspectionPatchSchema, InspectionPostSchema } from '../lib/schemas.js'
 import type { AppEnv } from '../types.js'
 
 export const inspectionsRouter = new Hono<AppEnv>()
-
-const PATCH_FIELDS = [
-  'owner_name', 'address', 'date', 'status', 'construction_year',
-  'living_area', 'heating_type', 'hot_water_system', 'ventilation_type', 'insulation_context',
-] as const satisfies readonly (keyof TablesUpdate<'inspections'>)[]
 
 inspectionsRouter.get('/', async (c) => {
   const { companyId } = c.get('auth')
@@ -68,8 +62,15 @@ inspectionsRouter.get('/:id', async (c) => {
 inspectionsRouter.patch('/:id', async (c) => {
   const { companyId } = c.get('auth')
   const { id } = c.req.param()
-  const body = await c.req.json<Record<string, unknown>>()
-  const update = pickAllowed<TablesUpdate<'inspections'>>(body, PATCH_FIELDS)
+  let raw: unknown
+  try {
+    raw = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
+  const parsed = InspectionPatchSchema.safeParse(raw)
+  if (!parsed.success) return c.json({ error: z.flattenError(parsed.error) }, 400)
+  const update = parsed.data as TablesUpdate<'inspections'>
   const { data, error } = await supabase
     .from('inspections')
     .update(update)

@@ -1,18 +1,11 @@
 import { Hono } from 'hono'
 import type { TablesUpdate } from '../../../../database.types.js'
 import { supabase } from '../lib/supabase.js'
-import { pickAllowed } from '../lib/utils.js'
 import { z } from 'zod'
-import { SpacePostSchema } from '../lib/schemas.js'
+import { SpacePatchSchema, SpacePostSchema } from '../lib/schemas.js'
 import type { AppEnv } from '../types.js'
 
 export const spacesRouter = new Hono<AppEnv>()
-
-const PATCH_FIELDS = [
-  'name', 'area', 'window_count', 'glazing_type', 'heating_presence',
-  'heating_type', 'ventilation_presence', 'ventilation_type', 'insulation_rating',
-  'fractional_index', 'level_id',
-] as const satisfies readonly (keyof TablesUpdate<'spaces'>)[]
 
 /** Returns the space row if it exists and belongs to companyId, otherwise null. */
 async function fetchSpaceForCompany(spaceId: string, companyId: string) {
@@ -86,13 +79,20 @@ spacesRouter.post('/', async (c) => {
 spacesRouter.patch('/:id', async (c) => {
   const { companyId } = c.get('auth')
   const { id } = c.req.param()
-  const body = await c.req.json<Record<string, unknown>>()
+  let raw: unknown
+  try {
+    raw = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
+  const parsed = SpacePatchSchema.safeParse(raw)
+  if (!parsed.success) return c.json({ error: z.flattenError(parsed.error) }, 400)
 
   if (!(await fetchSpaceForCompany(id, companyId))) {
     return c.json({ error: 'Not found' }, 404)
   }
 
-  const update = pickAllowed<TablesUpdate<'spaces'>>(body, PATCH_FIELDS)
+  const update = parsed.data as TablesUpdate<'spaces'>
   const { data, error } = await supabase
     .from('spaces')
     .update(update)

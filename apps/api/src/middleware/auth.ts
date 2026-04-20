@@ -50,7 +50,8 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 
     c.set('auth', { userId, companyId: agent.company_id })
     await next()
-  } catch {
+  } catch (err) {
+    console.error('[authMiddleware] JWT verification or agent lookup failed', err)
     return c.json({ error: 'Unauthorized' }, 401)
   }
 })
