@@ -1,6 +1,22 @@
 /// <reference types="cypress" />
 
 describe('offline PATCH cache', () => {
+  afterEach(() => {
+    cy.window({ log: false }).then((win) => {
+      try {
+        Object.defineProperty(win.navigator, 'onLine', {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: true,
+        })
+        win.dispatchEvent(new win.Event('online'))
+      } catch {
+        /* ignore */
+      }
+    })
+  })
+
   it('edited space name is visible immediately after navigating away and back while offline', () => {
     const suffix = Date.now()
 
@@ -29,12 +45,23 @@ describe('offline PATCH cache', () => {
     cy.contains('[data-testid="space-name"]', 'Espace original').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/spaces\//)
 
-    // Go offline — block all API calls
+    // App offline queue only runs when navigator reports offline (intercepts alone are not enough).
+    cy.window().then((win) => {
+      Object.defineProperty(win.navigator, 'onLine', {
+        configurable: true,
+        get: () => false,
+      })
+      win.dispatchEvent(new win.Event('offline'))
+    })
+
+    // Block stray network calls while "offline" (e.g. if something still tries fetch).
     cy.intercept('GET', '**', { forceNetworkError: true }).as('offlineGet')
     cy.intercept('PATCH', '/spaces/*', { forceNetworkError: true }).as('offlinePatch')
 
     cy.get('[data-testid="space-detail-name"]', { timeout: 10000 }).clear().type('Espace renommé hors ligne')
     cy.get('[data-testid="space-detail-name"]').blur()
+    // Autosave debounce is 300ms before api.patch runs
+    cy.wait(500)
 
     // Navigate back to inspection view (still offline)
     cy.get('[data-testid="space-detail-back"]').click()

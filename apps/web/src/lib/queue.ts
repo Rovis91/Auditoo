@@ -121,6 +121,12 @@ export async function deleteCachedResponse(url: string): Promise<void> {
   await db.delete(RESPONSES, url)
 }
 
+/** All cached API paths (for offline cache repair when `/inspections` list is stale). */
+export async function listCachedResponseUrls(): Promise<string[]> {
+  const db = await getDb()
+  return db.getAllKeys(RESPONSES)
+}
+
 /** Offline mutation queue (IndexedDB). `flush` lives in `@/lib/sync`. */
 export const mutationQueue = {
   enqueue,

@@ -3,6 +3,7 @@ import {
   mutationQueue,
   deleteCachedResponse,
   getCachedResponse,
+  listCachedResponseUrls,
   setCachedResponse,
   type MutationMethod,
   type VoiceQueuedBody,
@@ -161,11 +162,18 @@ async function primeCachesOnOfflinePatch(path: string, body: unknown): Promise<v
   const spaceMatch = path.match(/^\/spaces\/([^/]+)$/)
   if (spaceMatch) {
     const spaceId = spaceMatch[1]
+    const urls = new Set<string>()
     const list = (await getCachedResponse<AnyRecord[]>('/inspections')) ?? []
     for (const insp of list) {
-      const url = `/inspections/${insp.id as string}`
+      urls.add(`/inspections/${insp.id as string}`)
+    }
+    for (const key of await listCachedResponseUrls()) {
+      if (/^\/inspections\/[^/]+$/.test(key)) urls.add(key)
+    }
+    for (const url of urls) {
       const detail = await getCachedResponse<AnyRecord>(url)
-      const levels = (detail?.levels as AnyRecord[] | undefined) ?? []
+      if (!detail) continue
+      const levels = (detail.levels as AnyRecord[] | undefined) ?? []
       for (const level of levels) {
         const spaces = (level.spaces as AnyRecord[] | undefined) ?? []
         if (spaces.some((s) => s.id === spaceId)) {

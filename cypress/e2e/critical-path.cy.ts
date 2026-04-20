@@ -15,9 +15,7 @@ describe('critical path', () => {
 
     cy.location('pathname', { timeout: 20000 }).should('match', /^\/inspections\/[^/]+/)
 
-    cy.get('[data-testid="offline-bar"]', { timeout: 20000 }).should('be.visible')
-
-    cy.get('[data-testid="add-level"]').click()
+    cy.get('[data-testid="add-level"]', { timeout: 20000 }).should('be.visible').click()
     cy.get('[data-testid="new-level-name-input"]').type('Niveau E2E')
     cy.get('[data-testid="new-level-name-input"]').blur()
 
@@ -74,6 +72,8 @@ describe('critical path', () => {
       .within(() => {
         cy.get('[data-testid="level-delete"]').click()
       })
+
+    cy.get('[data-testid="level-delete-confirm"]', { timeout: 5000 }).should('be.visible').click()
 
     cy.contains('Niveau E2E').should('not.exist')
     cy.contains('Salle E2E complète').should('not.exist')

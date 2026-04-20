@@ -4,7 +4,8 @@
     "lib": ["ES2022"],
     "strict": true,
     "skipLibCheck": true,
-    "composite": true
+    "composite": true,
+    "ignoreDeprecations": "6.0"
   },
   "files": [],
   "references": [
