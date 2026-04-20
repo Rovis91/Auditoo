@@ -429,11 +429,22 @@ function InspectionDetailPage() {
     const activeData = active.data.current as { type: string; levelId?: string } | undefined
     const overData = over.data.current as { type: string; levelId?: string } | undefined
 
-    if (activeData?.type === 'level' && overData?.type === 'level') {
-      // Reorder levels
+    if (activeData?.type === 'level') {
+      // Nested SortableContext (spaces) often wins collision detection; resolve target level
+      // from either another level row or a space row's parent level.
+      const targetLevelId =
+        overData?.type === 'level'
+          ? (over.id as string)
+          : overData?.type === 'space' && overData.levelId
+            ? overData.levelId
+            : undefined
+      if (!targetLevelId) return
+
       const levels = sorted(inspection.levels)
       const oldIndex = levels.findIndex((l) => l.id === active.id)
-      const newIndex = levels.findIndex((l) => l.id === over.id)
+      const newIndex = levels.findIndex((l) => l.id === targetLevelId)
+      if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return
+
       const reordered = arrayMove(levels, oldIndex, newIndex)
       const before = reordered[newIndex - 1]?.fractional_index ?? null
       const after = reordered[newIndex + 1]?.fractional_index ?? null

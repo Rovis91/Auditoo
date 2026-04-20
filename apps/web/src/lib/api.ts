@@ -174,20 +174,57 @@ async function primeCachesOnOfflinePatch(path: string, body: unknown): Promise<v
       const detail = await getCachedResponse<AnyRecord>(url)
       if (!detail) continue
       const levels = (detail.levels as AnyRecord[] | undefined) ?? []
+      let fromLevelId: string | null = null
+      let existing: AnyRecord | null = null
       for (const level of levels) {
         const spaces = (level.spaces as AnyRecord[] | undefined) ?? []
-        if (spaces.some((s) => s.id === spaceId)) {
-          await setCachedResponse(url, {
-            ...detail,
-            levels: levels.map((l) =>
-              l.id === (level.id as string)
-                ? { ...l, spaces: spaces.map((s) => s.id === spaceId ? { ...s, ...patch } : s) }
-                : l,
-            ),
-          })
-          return
+        const hit = spaces.find((s) => s.id === spaceId)
+        if (hit) {
+          fromLevelId = level.id as string
+          existing = hit
+          break
         }
       }
+      if (!fromLevelId || !existing) continue
+
+      const toLevelId = patch.level_id as string | undefined
+      const merged = { ...existing, ...patch }
+      const movesLevel =
+        toLevelId !== undefined
+        && toLevelId !== fromLevelId
+        && levels.some((l) => l.id === toLevelId)
+
+      if (movesLevel) {
+        await setCachedResponse(url, {
+          ...detail,
+          levels: levels.map((l) => {
+            if (l.id === fromLevelId) {
+              const spaces = (l.spaces as AnyRecord[] | undefined) ?? []
+              return { ...l, spaces: spaces.filter((s) => s.id !== spaceId) }
+            }
+            if (l.id === toLevelId) {
+              const spaces = (l.spaces as AnyRecord[] | undefined) ?? []
+              return { ...l, spaces: [...spaces, merged] }
+            }
+            return l
+          }),
+        })
+      } else {
+        await setCachedResponse(url, {
+          ...detail,
+          levels: levels.map((l) =>
+            l.id === fromLevelId
+              ? {
+                  ...l,
+                  spaces: ((l.spaces as AnyRecord[] | undefined) ?? []).map((s) =>
+                    s.id === spaceId ? merged : s,
+                  ),
+                }
+              : l,
+          ),
+        })
+      }
+      return
     }
   }
 }

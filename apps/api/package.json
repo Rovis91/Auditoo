@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --env-file .env --watch --import tsx/esm src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -b tsconfig.json",
     "start": "node --env-file .env dist/index.js",
     "lint": "cd ../.. && eslint apps/api"
   },
