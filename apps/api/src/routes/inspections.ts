@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 import type { TablesUpdate } from '../../../../database.types.js'
 import { supabase } from '../lib/supabase.js'
 import { pickAllowed } from '../lib/utils.js'
+import { z } from 'zod'
+import { InspectionPostSchema } from '../lib/schemas.js'
 import type { AppEnv } from '../types.js'
 
 export const inspectionsRouter = new Hono<AppEnv>()
@@ -24,22 +26,25 @@ inspectionsRouter.get('/', async (c) => {
 
 inspectionsRouter.post('/', async (c) => {
   const { userId, companyId } = c.get('auth')
-  const body = await c.req.json<Record<string, unknown>>()
+  const raw = await c.req.json()
+  const parsed = InspectionPostSchema.safeParse(raw)
+  if (!parsed.success) return c.json({ error: z.flattenError(parsed.error) }, 400)
+  const body = parsed.data
   const { data, error } = await supabase
     .from('inspections')
     .insert({
       company_id: companyId,
       agent_id: userId,
-      owner_name: (body.owner_name as string | null) ?? null,
-      address: (body.address as string | null) ?? null,
-      date: (body.date as string | null) ?? null,
-      status: (body.status as string) ?? 'draft',
-      construction_year: (body.construction_year as number | null) ?? null,
-      living_area: (body.living_area as number | null) ?? null,
-      heating_type: (body.heating_type as string | null) ?? null,
-      hot_water_system: (body.hot_water_system as string | null) ?? null,
-      ventilation_type: (body.ventilation_type as string | null) ?? null,
-      insulation_context: (body.insulation_context as string | null) ?? null,
+      owner_name: body.owner_name ?? null,
+      address: body.address ?? null,
+      date: body.date ?? null,
+      status: body.status ?? 'draft',
+      construction_year: body.construction_year ?? null,
+      living_area: body.living_area ?? null,
+      heating_type: body.heating_type ?? null,
+      hot_water_system: body.hot_water_system ?? null,
+      ventilation_type: body.ventilation_type ?? null,
+      insulation_context: body.insulation_context ?? null,
     })
     .select()
     .single()

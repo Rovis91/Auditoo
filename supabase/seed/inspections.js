@@ -103,7 +103,7 @@ function spaceRows() {
       heating_type: 'Radiateurs acier',
       ventilation_presence: true,
       ventilation_type: 'Entrées d’air hygroréglables',
-      insulation_rating: 'Bon',
+      insulation_rating: 'Bonne',
       fractional_index: 'a0',
     },
     {
@@ -117,7 +117,7 @@ function spaceRows() {
       heating_type: null,
       ventilation_presence: true,
       ventilation_type: 'Hotte décorative renouvelée',
-      insulation_rating: 'Moyen',
+      insulation_rating: 'Moyenne',
       fractional_index: 'a1',
     },
     {
@@ -146,7 +146,7 @@ function spaceRows() {
       heating_type: 'Radiateurs acier',
       ventilation_presence: true,
       ventilation_type: 'Entrées d’air',
-      insulation_rating: 'Bon',
+      insulation_rating: 'Bonne',
       fractional_index: 'a0',
     },
     {
@@ -160,7 +160,7 @@ function spaceRows() {
       heating_type: 'Radiateurs acier',
       ventilation_presence: true,
       ventilation_type: 'Entrées d’air',
-      insulation_rating: 'Bon',
+      insulation_rating: 'Bonne',
       fractional_index: 'a1',
     },
     {
@@ -189,7 +189,7 @@ function spaceRows() {
       heating_type: 'Radiateurs',
       ventilation_presence: false,
       ventilation_type: null,
-      insulation_rating: 'Très bon',
+      insulation_rating: 'Très bonne',
       fractional_index: 'a0',
     },
     {
@@ -203,7 +203,7 @@ function spaceRows() {
       heating_type: 'Radiateurs',
       ventilation_presence: false,
       ventilation_type: null,
-      insulation_rating: 'Très bon',
+      insulation_rating: 'Très bonne',
       fractional_index: 'a1',
     },
     {
@@ -217,7 +217,7 @@ function spaceRows() {
       heating_type: null,
       ventilation_presence: true,
       ventilation_type: 'Hotte extraction',
-      insulation_rating: 'Très bon',
+      insulation_rating: 'Très bonne',
       fractional_index: 'a2',
     },
     // Inspection C — plain-pied
@@ -232,7 +232,7 @@ function spaceRows() {
       heating_type: 'Plancher chauffant',
       ventilation_presence: true,
       ventilation_type: 'VMC DF entretien à prévoir filtres',
-      insulation_rating: 'Bon',
+      insulation_rating: 'Bonne',
       fractional_index: 'a0',
     },
     {
@@ -246,7 +246,7 @@ function spaceRows() {
       heating_type: null,
       ventilation_presence: false,
       ventilation_type: null,
-      insulation_rating: 'Moyen',
+      insulation_rating: 'Moyenne',
       fractional_index: 'a1',
     },
   ]

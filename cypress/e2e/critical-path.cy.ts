@@ -36,6 +36,8 @@ describe('critical path', () => {
     cy.contains('[data-testid="space-name"]', 'Espace A', { timeout: 15000 }).should('be.visible')
 
     // Open space detail and fill every field (rename happens on the detail screen)
+    cy.intercept('PATCH', '/spaces/*').as('saveSpace')
+
     cy.contains('[data-testid="space-name"]', 'Espace A').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /\/inspections\/[^/]+\/spaces\/[^/]+/)
 
@@ -59,8 +61,8 @@ describe('critical path', () => {
     cy.get('[data-testid="space-detail-insulation"]').click()
     cy.get('[role="option"]').contains('Bonne').click()
 
-    // Allow debounced PATCH + last select handlers to finish
-    cy.wait(600)
+    // Wait for the last PATCH to complete instead of sleeping
+    cy.wait('@saveSpace', { timeout: 5000 })
 
     cy.get('[data-testid="space-detail-back"]').click()
     cy.location('pathname', { timeout: 10000 }).should('match', /^\/inspections\/[^/]+/)

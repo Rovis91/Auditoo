@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
-import type { TablesInsert, TablesUpdate } from '../../../../database.types.js'
+import type { TablesUpdate } from '../../../../database.types.js'
 import { supabase } from '../lib/supabase.js'
 import { pickAllowed } from '../lib/utils.js'
+import { z } from 'zod'
+import { SpacePostSchema } from '../lib/schemas.js'
 import type { AppEnv } from '../types.js'
 
 export const spacesRouter = new Hono<AppEnv>()
@@ -40,7 +42,10 @@ async function fetchSpaceForCompany(spaceId: string, companyId: string) {
 
 spacesRouter.post('/', async (c) => {
   const { companyId } = c.get('auth')
-  const body = await c.req.json<TablesInsert<'spaces'> & { levelId: string }>()
+  const raw = await c.req.json()
+  const parsed = SpacePostSchema.safeParse(raw)
+  if (!parsed.success) return c.json({ error: z.flattenError(parsed.error) }, 400)
+  const body = parsed.data
 
   const { data: level } = await supabase
     .from('levels')

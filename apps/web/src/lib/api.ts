@@ -7,8 +7,9 @@ import {
   type MutationMethod,
   type VoiceQueuedBody,
 } from './queue'
+import { API_BASE } from './config'
 
-const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001'
+const BASE = API_BASE
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = localStorage.getItem(TOKEN_KEY)
@@ -118,6 +119,69 @@ async function findInspectionsContainingLevel(levelId: string): Promise<string[]
     if (levels.some((l) => l.id === levelId)) urls.push(url)
   }
   return urls
+}
+
+async function primeCachesOnOfflinePatch(path: string, body: unknown): Promise<void> {
+  if (typeof body !== 'object' || body === null) return
+  const patch = body as AnyRecord
+
+  // PATCH /inspections/:id
+  const inspMatch = path.match(/^\/inspections\/([^/]+)$/)
+  if (inspMatch) {
+    const id = inspMatch[1]
+    const detail = await getCachedResponse<AnyRecord>(`/inspections/${id}`)
+    if (detail) await setCachedResponse(`/inspections/${id}`, { ...detail, ...patch })
+    const list = (await getCachedResponse<AnyRecord[]>('/inspections')) ?? []
+    const updated = list.map((r) => r.id === id ? { ...r, ...patch } : r)
+    await setCachedResponse('/inspections', updated)
+    return
+  }
+
+  // PATCH /levels/:id
+  const levelMatch = path.match(/^\/levels\/([^/]+)$/)
+  if (levelMatch) {
+    const levelId = levelMatch[1]
+    const list = (await getCachedResponse<AnyRecord[]>('/inspections')) ?? []
+    for (const insp of list) {
+      const url = `/inspections/${insp.id as string}`
+      const detail = await getCachedResponse<AnyRecord>(url)
+      const levels = (detail?.levels as AnyRecord[] | undefined) ?? []
+      if (levels.some((l) => l.id === levelId)) {
+        await setCachedResponse(url, {
+          ...detail,
+          levels: levels.map((l) => l.id === levelId ? { ...l, ...patch } : l),
+        })
+        break
+      }
+    }
+    return
+  }
+
+  // PATCH /spaces/:id
+  const spaceMatch = path.match(/^\/spaces\/([^/]+)$/)
+  if (spaceMatch) {
+    const spaceId = spaceMatch[1]
+    const list = (await getCachedResponse<AnyRecord[]>('/inspections')) ?? []
+    for (const insp of list) {
+      const url = `/inspections/${insp.id as string}`
+      const detail = await getCachedResponse<AnyRecord>(url)
+      const levels = (detail?.levels as AnyRecord[] | undefined) ?? []
+      for (const level of levels) {
+        const spaces = (level.spaces as AnyRecord[] | undefined) ?? []
+        if (spaces.some((s) => s.id === spaceId)) {
+          await setCachedResponse(url, {
+            ...detail,
+            levels: levels.map((l) =>
+              l.id === (level.id as string)
+                ? { ...l, spaces: spaces.map((s) => s.id === spaceId ? { ...s, ...patch } : s) }
+                : l,
+            ),
+          })
+          return
+        }
+      }
+    }
+  }
 }
 
 /** `/inspections/:id` → id, or null if path does not match. */
@@ -298,6 +362,7 @@ async function mutate<T>(method: MutationMethod, path: string, body: unknown | n
     timestamp: Date.now(),
     payloadType: 'json',
   })
+  if (body != null) await primeCachesOnOfflinePatch(path, body)
   return undefined as T
 }
 

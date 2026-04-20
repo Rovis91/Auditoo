@@ -1,8 +1,14 @@
-import type { Database } from './database.types';
+import type { Database } from './database.types'
 
-// Reserved for narrowing Json columns and table aliases; re-export Row types for readability until those extensions are needed.
-export type Inspections = Database['public']['Tables']['inspections']['Row'];
-export type Levels = Database['public']['Tables']['levels']['Row'];
-export type Spaces = Database['public']['Tables']['spaces']['Row'];
-export type Companies = Database['public']['Tables']['companies']['Row'];
-export type Agents = Database['public']['Tables']['agents']['Row'];
+// Row types derived from the generated Supabase schema — single source of truth.
+// Re-run `npm run db:types` whenever the schema changes to keep database.types.ts current,
+// then these aliases pick up the changes automatically.
+export type Inspection = Database['public']['Tables']['inspections']['Row']
+export type Level      = Database['public']['Tables']['levels']['Row']
+export type Space      = Database['public']['Tables']['spaces']['Row']
+export type Company    = Database['public']['Tables']['companies']['Row']
+export type Agent      = Database['public']['Tables']['agents']['Row']
+
+// Composed shapes returned by the API's nested-select endpoints.
+export type LevelWithSpaces      = Level & { spaces: Space[] }
+export type InspectionWithLevels = Inspection & { levels: LevelWithSpaces[] }

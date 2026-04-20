@@ -1,10 +1,11 @@
 import { TOKEN_KEY } from '@/contexts'
 import { mutationQueue, type VoiceQueuedBody } from './queue'
+import { API_BASE } from './config'
 
 /** Dispatched after a queued `POST /voice` succeeds during flush (detail: `{ inspectionId }`). */
 export const VOICE_SYNCED_EVENT = 'auditoo:voice-synced'
 
-const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001'
+const BASE = API_BASE
 const HEALTH_INTERVAL_MS = 30_000
 const PING_TIMEOUT_MS = 2_000
 

@@ -22,6 +22,15 @@ import { ChevronLeft, ChevronRight, GripVertical, Pencil, Plus, Trash2 } from 'l
 import { EntityCard } from '@/components/entity-card'
 import { SwipeDeleteRow } from '@/components/swipe-delete-row'
 import { Button, buttonVariants } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { OfflineBar } from '@/components/offline-bar'
@@ -315,6 +324,7 @@ function InspectionDetailPage() {
   const [inspection, setInspection] = useState<InspectionWithLevels | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [pendingDeleteLevelId, setPendingDeleteLevelId] = useState<string | null>(null)
 
   const load = useCallback(() => {
     api
@@ -363,7 +373,8 @@ function InspectionDetailPage() {
 
   // ── Mutations ─────────────────────────────
 
-  async function deleteLevel(levelId: string) {
+  async function confirmDeleteLevel(levelId: string) {
+    setPendingDeleteLevelId(null)
     setInspection((prev) => prev ? {
       ...prev,
       levels: prev.levels.filter((l) => l.id !== levelId),
@@ -557,7 +568,7 @@ function InspectionDetailPage() {
               <LevelSection
                 key={level.id}
                 level={level}
-                onDeleteLevel={() => deleteLevel(level.id)}
+                onDeleteLevel={() => setPendingDeleteLevelId(level.id)}
                 onRenameLevel={(label) => renameLevel(level.id, label)}
                 onDeleteSpace={deleteSpace}
                 onAddSpace={addSpace}
@@ -614,6 +625,30 @@ function InspectionDetailPage() {
       </main>
 
       <VoiceBar inspectionId={id} onComplete={(r) => { if (r.status === 'applied') void load() }} />
+
+      <AlertDialog
+        open={!!pendingDeleteLevelId}
+        onOpenChange={(open) => !open && setPendingDeleteLevelId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce niveau ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est définitive. Tous les espaces de ce niveau seront supprimés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              data-testid="level-delete-confirm"
+              onClick={() => pendingDeleteLevelId && void confirmDeleteLevel(pendingDeleteLevelId)}
+            >
+              Supprimer
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

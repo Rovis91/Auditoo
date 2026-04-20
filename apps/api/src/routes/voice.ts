@@ -7,6 +7,14 @@ import type { AppEnv } from '../types.js'
 
 export const voiceRouter = new Hono<AppEnv>()
 
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  const key = process.env.OPENAI_API_KEY
+  if (!key?.trim()) throw new Error('OPENAI_API_KEY not configured')
+  if (!_openai) _openai = new OpenAI({ apiKey: key })
+  return _openai
+}
+
 const INSPECTION_FIELDS: readonly (keyof Tables<'inspections'>)[] = [
   'owner_name', 'address', 'date', 'status', 'construction_year',
   'living_area', 'heating_type', 'hot_water_system', 'ventilation_type', 'insulation_context',
@@ -111,11 +119,10 @@ function buildSpaceInsertRow(
 }
 
 voiceRouter.post('/', async (c) => {
-  const key = process.env.OPENAI_API_KEY
-  if (!key?.trim()) {
+  if (!process.env.OPENAI_API_KEY?.trim()) {
     return c.json({ error: 'OPENAI_API_KEY is not configured' }, 400)
   }
-  const openai = new OpenAI({ apiKey: key })
+  const openai = getOpenAI()
 
   const { companyId } = c.get('auth')
 
@@ -193,7 +200,7 @@ voiceRouter.post('/', async (c) => {
   let transcript: Awaited<ReturnType<typeof openai.audio.transcriptions.create>>
   try {
     transcript = await openai.audio.transcriptions.create({
-      model: 'whisper-1',
+      model: 'gpt-4o-transcribe',
       file: audioFile,
       language: 'fr',
     })
