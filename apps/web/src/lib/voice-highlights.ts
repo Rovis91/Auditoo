@@ -17,7 +17,7 @@ function key(table: string, entityId: string, field: string) {
   return `${table}:${entityId}:${field}`
 }
 
-/** Aligné sur les defaults d’insert `buildSpaceInsertRow` côté API ([apps/api/src/routes/voice.ts]). */
+/** Must match insert defaults in API `buildSpaceInsertRow` ([apps/api/src/routes/voice.ts]) — update both if defaults change. */
 const VOICE_CREATED_SPACE_DEFAULTS: Record<string, unknown> = {
   area: null,
   window_count: null,
@@ -101,7 +101,7 @@ export function clearVoiceHighlights(inspectionId: string) {
   remove(inspectionId)
 }
 
-/** Pas de surlignage « nouveau » (vert) pour valeurs vides / zéro (selects, nombres, etc.). */
+/** No green "new" highlight for empty or zero-like values (selects, numbers, etc.). */
 export function isSubstantiveVoiceHighlightValue(value: unknown): boolean {
   if (value === null || value === undefined) return false
   if (value === '') return false
@@ -178,7 +178,7 @@ export function getSpaceRowTone(inspectionId: string, spaceId: string): VoiceHig
   return null
 }
 
-/** Nombre de champs en ton `new` pour cette pièce (dérivé des clés `fields`, pas de store séparé). */
+/** Count of fields in tone `new` for this space (derived from `fields` keys; no separate store). */
 export function getSpaceChangeBadgeCount(inspectionId: string, spaceId: string): number {
   const s = read(inspectionId)
   if (!s) return 0
@@ -238,7 +238,7 @@ export function consumeField(
   write(inspectionId, next)
 }
 
-/** Clear row-level “new space” and all field hints for that space (e.g. list row click). */
+/** Clear row-level "new space" and all field hints for that space (e.g. list row click). */
 export function consumeSpaceRow(inspectionId: string, spaceId: string) {
   const s = read(inspectionId)
   if (!s) return

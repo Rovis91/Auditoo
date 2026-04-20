@@ -47,7 +47,7 @@ One-day build with AI assistance. Each phase lists concrete tasks and its depend
 
 - [X] Add Hono, `@supabase/supabase-js`, `dotenv` to `apps/api`
 - [X] Create server entry `apps/api/src/index.ts` (Hono app, port from env)
-- [X] JWT middleware: validate `Authorization: Bearer <token>` using `SUPABASE_JWT_SECRET`, attach `{ userId, companyId }` to context
+- [X] JWT middleware: validate `Authorization: Bearer <token>` via Supabase Auth **JWKS** (`jwtVerify` + issuer/audience), resolve `agents` row, attach `{ userId, companyId }` to context
 - [X] Resource routers (each in its own file):
   - `GET /inspections` — list by company
   - `POST /inspections` — create

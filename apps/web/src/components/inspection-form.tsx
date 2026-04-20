@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { format, parse } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -63,15 +63,18 @@ export function InspectionForm({ inspection, onSubmit, onAutosave, isLoading = f
 
   const isEdit = Boolean(inspection?.id)
   const isEditRef = useRef(isEdit)
-  isEditRef.current = isEdit
   const fieldsRef = useRef(fields)
-  fieldsRef.current = fields
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSentPayloadKeyRef = useRef<string | null>(null)
   const onAutosaveRef = useRef(onAutosave)
-  onAutosaveRef.current = onAutosave
   const inspectionRef = useRef(inspection)
-  inspectionRef.current = inspection
+
+  useLayoutEffect(() => {
+    isEditRef.current = isEdit
+    fieldsRef.current = fields
+    onAutosaveRef.current = onAutosave
+    inspectionRef.current = inspection
+  }, [isEdit, fields, onAutosave, inspection])
 
   const buildPayload = useCallback((f: typeof fields): Partial<Inspection> => ({
     owner_name: f.owner_name || null,

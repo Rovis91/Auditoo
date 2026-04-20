@@ -13,7 +13,7 @@ Full product spec: `docs/PRD.md`. Architecture decisions and trade-offs: `docs/D
 ```bash
 npm run dev          # Start everything: Supabase (Docker) + Hono API + Vite frontend
 npm run db:reset     # Wipe DB and re-apply all Supabase migrations
-npm run db:seed      # Run supabase/seed.js (Auth + table rows via JS; run after db:reset)
+npm run db:seed      # Run supabase/seed.js — loads env from apps/api/.env (same as API)
 npm run db:types     # Regenerate database.types.ts from local Supabase schema
 npm run lint         # ESLint across all workspaces
 npm test             # Run Cypress E2E tests
@@ -56,7 +56,7 @@ The frontend (`apps/web`) never calls Supabase directly. All requests go through
 React SPA → Bearer JWT → Hono API → Supabase service-role client → PostgreSQL
 ```
 
-Auth flow: Supabase Auth issues the JWT → stored in `localStorage` → attached as `Authorization: Bearer` header to every API request → Hono middleware validates it using `SUPABASE_JWT_SECRET`.
+Auth flow: Supabase Auth issues the JWT → stored in `localStorage` → attached as `Authorization: Bearer` on every API request → Hono middleware validates it with **jose** against Supabase Auth **JWKS** at `{SUPABASE_URL}/auth/v1/.well-known/jwks.json` (issuer includes localhost/127.0.0.1 variants where relevant; audience `authenticated`), then loads `agents.company_id` for `{ userId, companyId }`.
 
 ## Frontend
 
@@ -82,7 +82,7 @@ When designing or building UI in `apps/web`, **always** use `.agents/skills/fron
 
 ## Environment Variables
 
-`apps/api/.env` — `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `OPENAI_API_KEY`, `PORT`
+`apps/api/.env` — `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `PORT`, optional `CORS_ORIGINS` (comma-separated; defaults to local Vite origins in development)
 
 `apps/web/.env` — `VITE_API_URL`
 

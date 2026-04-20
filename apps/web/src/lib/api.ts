@@ -214,7 +214,9 @@ async function postVoiceFetch(
       createdSpaces: data.createdSpaces,
     }
   } catch {
-    return { changes: [] }
+    throw new Error(
+      text.trim() ? `Invalid JSON from voice API: ${text.slice(0, 300)}` : 'Invalid JSON from voice API (empty body)',
+    )
   }
 }
 

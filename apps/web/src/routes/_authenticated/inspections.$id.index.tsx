@@ -52,7 +52,7 @@ interface SpaceRowProps {
   space: Space
   onDelete: () => void
   voiceRowClassName?: string
-  /** Nombre de champs « nouveaux » (vert) — badge à côté du nom */
+  /** Count of "new" (green) voice-touched fields — badge next to the name */
   voiceChangeBadgeCount?: number
   onNavigateSpace: () => void
 }

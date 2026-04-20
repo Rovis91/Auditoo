@@ -26,12 +26,26 @@ This installs dependencies for all workspaces (`apps/web`, `apps/api`) via npm w
 
 ## 2. Environment variables
 
+There are **two** env files to maintain locally (no third file at the repo root):
+
+| File | Who reads it | Purpose |
+|------|----------------|---------|
+| `apps/api/.env` | Hono (`npm run dev` / `start` in `apps/api`) **and** `npm run db:seed` at the root | Supabase URL + service role, OpenAI, `PORT`, optional `CORS_ORIGINS` |
+| `apps/web/.env` | Vite only | `VITE_API_URL` (and any other `VITE_*` public config) |
+
+Keeping secrets in `apps/api/.env` and browser-safe vars in `apps/web/.env` matches how each tool loads env and avoids duplicating Supabase keys in a root `.env`.
+
 ### `apps/api/.env`
+
+The API and the root seed script load this file (see `apps/api/package.json` and root `package.json` → `db:seed`). **Template:** `apps/api/.env.example` → copy to `apps/api/.env`.
+
 ```env
 # Supabase local instance (default ports from `npx supabase start`)
 SUPABASE_URL=http://localhost:54321
 SUPABASE_SERVICE_ROLE_KEY=<service_role_key>   # printed by `npx supabase start`
-SUPABASE_JWT_SECRET=<jwt_secret>               # printed by `npx supabase start`
+
+# Browser origins allowed by CORS (comma-separated). Local dev defaults work if unset.
+# CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 
 # OpenAI
 OPENAI_API_KEY=sk-...
@@ -40,23 +54,17 @@ OPENAI_API_KEY=sk-...
 PORT=3001
 ```
 
+**JWT verification:** The Hono middleware validates `Authorization: Bearer <access_token>` using **JWKS** from `{SUPABASE_URL}/auth/v1/.well-known/jwks.json` (see `apps/api/src/middleware/auth.ts`). It checks **issuer** (including both `http://localhost:54321` and `http://127.0.0.1:54321` forms when applicable) and **audience** `authenticated`. You do **not** need `SUPABASE_JWT_SECRET` in `apps/api/.env` for that flow; the JWT secret printed by the CLI is used by Supabase Auth internally, not by this API code path.
+
 ### `apps/web/.env`
+
+**Template:** `apps/web/.env.example` → copy to `apps/web/.env`.
+
 ```env
 VITE_API_URL=http://localhost:3001
 ```
 
 > **Note:** Never put the Supabase service-role key or OpenAI key in the frontend env. They must stay server-side only.
-
-### `.env.local` at the repo root (for `npm run db:seed` only)
-
-The root script `npm run db:seed` runs `node --env-file .env.local supabase/seed.js`. Create **`.env.local`** in the project root (same directory as `package.json`) with:
-
-```env
-SUPABASE_URL=http://localhost:54321
-SUPABASE_SERVICE_ROLE_KEY=<same service_role key as in apps/api/.env>
-```
-
-Use the **service_role** value printed by `npx supabase start` (it matches what you put in `apps/api/.env`). This file is only for the seed script; it is not used by the Vite app.
 
 ---
 
@@ -78,7 +86,7 @@ service_role key: <service_role_key>
 JWT secret:  <jwt_secret>
 ```
 
-Copy `service_role_key` and `jwt_secret` into `apps/api/.env`.
+Copy `service_role_key` into `apps/api/.env` (required for API and for `npm run db:seed`).
 
 ---
 
@@ -200,7 +208,7 @@ No login required in local mode.
 | Port 54321 already in use | `npx supabase stop` then `npx supabase start` |
 | `db:seed` fails with "user already exists" | `npx supabase db reset` to wipe, then re-seed |
 | Types out of sync | Run `npm run db:types` after any migration change |
-| API 401 errors | Check `SUPABASE_JWT_SECRET` in `apps/api/.env` matches CLI output |
+| API 401 errors | Confirm `SUPABASE_URL` in `apps/api/.env` matches the host you use to sign in (e.g. `localhost` vs `127.0.0.1`). Token must be a valid Supabase access JWT; check expiry, and that `Authorization: Bearer` is sent. See JWKS flow in `apps/api/src/middleware/auth.ts`. |
 | Voice not working | Check `OPENAI_API_KEY` in `apps/api/.env` is valid |
 | Cypress `ECONNREFUSED` / blank tests | Ensure `npm run dev` is running (Vite + API) and `VITE_API_URL` points at the API |
-| `npm run db:seed` fails with missing env | Create root `.env.local` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (see §2) |
+| `npm run db:seed` fails with missing env | Ensure `apps/api/.env` exists with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (see §2) |

@@ -8,12 +8,21 @@ import { levelsRouter } from './routes/levels.js'
 import { spacesRouter } from './routes/spaces.js'
 import { voiceRouter } from './routes/voice.js'
 
+/** Comma-separated `CORS_ORIGINS`, or local Vite defaults for development. */
+function corsAllowedOrigins(): string[] {
+  const raw = process.env.CORS_ORIGINS?.trim()
+  if (raw) {
+    return raw.split(',').map((s) => s.trim()).filter(Boolean)
+  }
+  return ['http://localhost:5173', 'http://127.0.0.1:5173']
+}
+
 const app = new Hono()
 
 app.use(
   '*',
   cors({
-    origin: (origin) => origin ?? '*',
+    origin: corsAllowedOrigins(),
     allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   }),

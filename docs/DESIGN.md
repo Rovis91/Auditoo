@@ -15,7 +15,7 @@
                          │ HTTP + Bearer JWT
 ┌────────────────────────▼────────────────────────────┐
 │  apps/api  (Hono, TypeScript, Node)                 │
-│  - JWT validation middleware (Supabase secret)      │
+│  - JWT validation middleware (Supabase Auth JWKS)     │
 │  - REST resource endpoints                          │
 │  - OpenAI Whisper + GPT voice pipeline              │
 │  - Supabase service-role client for DB access       │

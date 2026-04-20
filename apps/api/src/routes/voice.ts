@@ -290,7 +290,13 @@ Règles :
       .select()
       .single()
 
-    if (error || !data) continue
+    if (error) {
+      console.error('Voice createLevels', error)
+      return c.json({ error: 'Voice apply failed', detail: error.message }, 500)
+    }
+    if (!data) {
+      return c.json({ error: 'Voice apply failed', detail: 'Level insert returned no row' }, 500)
+    }
 
     createdLevels.push(data)
     newLevelIdsInOrder.push(data.id)
@@ -320,7 +326,13 @@ Règles :
 
     const { data, error } = await supabase.from('spaces').insert(insertRow).select().single()
 
-    if (error || !data) continue
+    if (error) {
+      console.error('Voice createSpaces', error)
+      return c.json({ error: 'Voice apply failed', detail: error.message }, 500)
+    }
+    if (!data) {
+      return c.json({ error: 'Voice apply failed', detail: 'Space insert returned no row' }, 500)
+    }
 
     createdSpaces.push(data)
     createdSpaceIdsInOrder.push(data.id)
@@ -357,12 +369,16 @@ Règles :
       value: raw.value,
     }
 
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from(change.table)
       .update({ [change.field]: change.value } as never)
       .eq('id', change.id)
 
-    if (!error) applied.push(change)
+    if (updateError) {
+      console.error('Voice changes', updateError)
+      return c.json({ error: 'Voice apply failed', detail: updateError.message }, 500)
+    }
+    applied.push(change)
   }
 
   return c.json({
