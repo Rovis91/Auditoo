@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { generateKeyBetween } from 'fractional-indexing'
-import OpenAI from 'openai'
+import OpenAI, { toFile } from 'openai'
 import { z } from 'zod'
 import type { Tables, TablesInsert } from '../../../../database.types.js'
 import { supabase } from '../lib/supabase.js'
@@ -177,11 +177,25 @@ voiceRouter.post('/', async (c) => {
     ? `Contexte écran : l'utilisateur édite l'espace id="${targetSpace.id}" (nom : "${targetSpace.name}"). Priorise les champs de cet espace pour les corrections ponctuelles.`
     : 'Contexte écran : vue inspection / niveaux (pas un détail de pièce).'
 
+  const audioBytes = Buffer.from(await audioFile.arrayBuffer())
+  const mimeBase =
+    (audioFile.type ?? '').split(';')[0]?.trim() || 'application/octet-stream'
+
+  const fileForOpenAI = await toFile(
+    audioBytes,
+    audioFile.name || 'recording.webm',
+    { type: mimeBase === 'application/octet-stream' ? 'audio/webm' : mimeBase },
+  )
+
+  // Default `whisper-1` for MediaRecorder WebM; `gpt-4o-transcribe` returned 400 `param: file` on identical bytes.
+  const transcriptionModel =
+    process.env.VOICE_TRANSCRIPTION_MODEL?.trim() || 'whisper-1'
+
   let transcript: Awaited<ReturnType<typeof openai.audio.transcriptions.create>>
   try {
     transcript = await openai.audio.transcriptions.create({
-      model: 'gpt-4o-transcribe',
-      file: audioFile,
+      model: transcriptionModel,
+      file: fileForOpenAI,
       language: 'fr',
     })
   } catch (e) {

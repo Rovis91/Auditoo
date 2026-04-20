@@ -1,6 +1,8 @@
 import { TOKEN_KEY } from '@/contexts'
+import type { VoiceChange } from './api'
 import { mutationQueue, type VoiceQueuedBody } from './queue'
 import { API_BASE } from './config'
+import { recordVoiceHighlights } from './voice-highlights'
 
 /** Dispatched after a queued `POST /voice` succeeds during flush (detail: `{ inspectionId }`). */
 export const VOICE_SYNCED_EVENT = 'auditoo:voice-synced'
@@ -101,6 +103,23 @@ export async function flush(): Promise<void> {
           if (m.id != null) await mutationQueue.remove(m.id)
           if (isVoice && body && typeof body === 'object') {
             const vb = body as VoiceQueuedBody
+            if (text.length > 0) {
+              try {
+                const data = JSON.parse(text) as {
+                  changes?: VoiceChange[]
+                  createdLevels?: unknown[]
+                  createdSpaces?: unknown[]
+                }
+                recordVoiceHighlights(vb.inspectionId, {
+                  status: 'applied',
+                  changes: data.changes ?? [],
+                  createdLevels: data.createdLevels,
+                  createdSpaces: data.createdSpaces,
+                })
+              } catch {
+                /* ignore non-JSON voice responses */
+              }
+            }
             window.dispatchEvent(
               new CustomEvent(VOICE_SYNCED_EVENT, { detail: { inspectionId: vb.inspectionId } }),
             )
